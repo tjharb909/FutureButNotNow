@@ -11,7 +11,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 
-from slack_notifier import notify_slack
+from utils.slack_notifier import notify_slack
 
 # === CONFIGURATION ===
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -173,24 +173,54 @@ def post_to_twitter():
     try:
         product_title = get_next_unused_product()
         ai_data = get_ai_tweet(product_title)
+
         if not ai_data or not all(k in ai_data for k in ("tweet", "cta", "hashtags", "keywords")):
             print("✖ Failed to generate required tweet content.")
             log_tweet(product_title, "", "", [], "", "gen_fail")
-            notify_slack("ProductBot", "fail", "OpenAI generation failed.")
+            notify_slack(
+                bot_name="ProductBot",
+                status="fail",
+                message_block="❌ OpenAI generation failed.",
+                trend=product_title,
+                tweet=None,
+                hashtag=None,
+                context=None
+            )
             return
+
         tweet_body = ai_data["tweet"].strip()
         tweet_cta = ai_data["cta"].strip()
         hashtags = ai_data.get("hashtags", [])
         keywords = ai_data.get("keywords", [])
         aff_link = generate_affiliate_link(keywords, product_title)
         final_tweet = format_generated_tweet(tweet_body, tweet_cta, hashtags, aff_link)
+
         twitter_client.create_tweet(text=final_tweet)
         log_tweet(product_title, tweet_body, tweet_cta, hashtags, aff_link, "success")
         print("[✓] Tweet posted successfully.")
-        notify_slack("ProductBot", "success", f"Posted:\n```{final_tweet}```")
+
+        notify_slack(
+            bot_name="ProductBot",
+            status="success",
+            message_block="Product tweet posted.",
+            trend=product_title,
+            tweet=final_tweet,
+            hashtag=" ".join([f"#{h}" for h in hashtags]),
+            context=None
+        )
+
     except Exception as outer:
         print(f"[🔥 ERROR]: {outer}")
-        notify_slack("ProductBot", "fail", f"Error:\n```{str(outer)}```")
+        notify_slack(
+            bot_name="ProductBot",
+            status="fail",
+            message_block="❌ Tweet failed.",
+            trend=product_title if 'product_title' in locals() else "Unknown",
+            tweet=final_tweet if 'final_tweet' in locals() else None,
+            hashtag=" ".join([f"#{h}" for h in hashtags]) if 'hashtags' in locals() else None,
+            context=None
+        )
+
 
 if __name__ == "__main__":
     post_to_twitter()

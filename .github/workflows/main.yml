@@ -33,3 +33,4 @@ def notify_slack(bot, status, msg):
     res = requests.post(os.environ['SLACK_WEBHOOK_URL'], data=json.dumps(payload), headers={'Content-Type': 'application/json'})
     print(f'Slack response: {res.status_code}')
 notify_slack('SlackTest', 'success', 'This is a test from GitHub Actions.')
+"

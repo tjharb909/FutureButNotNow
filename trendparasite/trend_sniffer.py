@@ -129,10 +129,9 @@ Your task:
 After the tweet, include:
 1. A short CTA or fake reply (≤ 40 characters) — this should contrast or collapse the tone of the main tweet (e.g., regret, shame, indifference, or absurdity).
 2. One **real, relevant hashtag** that could help the post go viral:
-    - It must be an actual, currently used hashtag — either topical "(#Election2024, #RentCrisis) or emotional (#OkSure, #ThisIsFine).
-    - DO NOT invent hashtags or use fluff tags like "#Thoughts, #Venting, or #LateNightMood.
+    - It must be an actual, currently used hashtag — either topical (#Election2024, #RentCrisis) or emotional (#OkSure, #ThisIsFine).
+    - DO NOT invent hashtags or use fluff tags like #Thoughts, #Venting, or #LateNightMood.
     - The hashtag should reflect real user behavior and discoverability — something people actually browse or search.
-"""
 
 Return a JSON object with:
 {{ 
@@ -140,6 +139,7 @@ Return a JSON object with:
   "cta": "...", 
   "hashtag": "#RealTrendingHashtag" 
 }}
+"""
     try:
         res = client.chat.completions.create(
             model="gpt-4",

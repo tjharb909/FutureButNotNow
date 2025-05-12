@@ -147,9 +147,9 @@ Return a JSON object with:
         return f"ERROR: {e}"
 
 # ─────────────────────────────────────
-# Twitter Posting
+# Twitter Posting (Main Tweet Only)
 # ─────────────────────────────────────
-def post_to_twitter(main_tweet, reply_text):
+def post_to_twitter(full_tweet):
     try:
         auth = tweepy.OAuthHandler(
             os.environ["TWITTER_API_KEY"],
@@ -160,14 +160,10 @@ def post_to_twitter(main_tweet, reply_text):
             os.environ["TWITTER_ACCESS_SECRET"]
         )
         api = tweepy.API(auth)
-        
-        # Only post main tweet (no reply)
-        api.update_status(main_tweet)
-        print("✅ Main tweet posted successfully.")
-        
+        api.update_status(full_tweet)
+        print("✅ Tweet posted successfully.")
     except Exception as e:
         print("❌ Twitter post failed:", e)
-
 
 # ─────────────────────────────────────
 # MAIN
@@ -175,6 +171,7 @@ def post_to_twitter(main_tweet, reply_text):
 if __name__ == "__main__":
     print(f"🗓️ TrendParasite — {datetime.datetime.now().strftime('%Y-%m-%d')}")
 
+    # Load trends and filter out used ones
     trends = fetch_reddit_trends()
     memory = load_memory()
     recent = {entry["trend"] for entry in memory}
@@ -184,10 +181,12 @@ if __name__ == "__main__":
         print("🛑 No fresh trends available.")
         exit()
 
+    # Rank and select best
     ranked = score_trends(fresh_trends)
     selected = ranked[0]
     save_trend_to_memory(selected)
 
+    # Generate tweet
     print(f"\n🧠 Selected Trend: {selected}\n")
     output_raw = generate_tweet(selected)
 
@@ -200,11 +199,13 @@ if __name__ == "__main__":
         if not tweet or not cta or not hashtag:
             raise ValueError("Missing one or more required keys.")
 
-        final_cta = f"{cta} {hashtag}"
+        # Combine into single tweet
+        full_tweet = f"{tweet}\n{cta} {hashtag}"
         print("📤 Final Output:")
-        print(json.dumps({"tweet": tweet, "cta": final_cta}, indent=2))
+        print(json.dumps({"tweet": full_tweet}, indent=2))
 
-        post_to_twitter(tweet, final_cta)
+        # Post the full tweet
+        post_to_twitter(full_tweet)
 
     except Exception as e:
         print("❌ Error parsing tweet output:", e)

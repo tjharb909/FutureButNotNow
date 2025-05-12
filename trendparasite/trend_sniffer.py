@@ -1,4 +1,3 @@
-import os
 import json
 import datetime
 from pathlib import Path
@@ -6,6 +5,10 @@ import praw
 import tweepy
 from openai import OpenAI
 from dotenv import load_dotenv
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
+
 from slack_notifier import notify_slack
 
 # Load environment variables from .env if exists

@@ -145,9 +145,9 @@ Return a JSON object with:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.95
         )
-        return res.choices[0].message.content.strip()
+        return res.choices[0].message.content.strip(), context
     except Exception as e:
-        return f"ERROR: {e}"
+        return f"ERROR: {e}", None
 
 # ─────────────────────────────────────
 # Twitter Posting (Main Tweet Only)
@@ -164,8 +164,11 @@ def post_to_twitter(full_tweet):
         print("✅ Tweet posted successfully.")
     except Exception as e:
         print("❌ Twitter post failed:", e)
-        notify_slack("TrendParasite", "fail", f"Error:\n```{str(e)}```")
+        raise
 
+# ─────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────
 if __name__ == "__main__":
     print(f"🗓️ TrendParasite — {datetime.datetime.now().strftime('%Y-%m-%d')}")
     trends = fetch_reddit_trends()
@@ -182,7 +185,7 @@ if __name__ == "__main__":
     save_trend_to_memory(selected)
 
     print(f"🧠 Selected Trend: {selected}")
-    output_raw = generate_tweet(selected)
+    output_raw, context = generate_tweet(selected)
 
     try:
         output = json.loads(output_raw)
@@ -195,8 +198,24 @@ if __name__ == "__main__":
         print("📤 Final Output:")
         print(json.dumps({"tweet": full_tweet}, indent=2))
         post_to_twitter(full_tweet)
-        notify_slack("TrendParasite", "success", f"Posted:\n```{full_tweet}```")
+        notify_slack(
+            bot_name="TrendParasite",
+            status="success",
+            message_block=f"Tweet posted successfully.",
+            trend=selected,
+            tweet=full_tweet,
+            hashtag=hashtag,
+            context=context
+        )
     except Exception as e:
         print("❌ Error parsing tweet:", e)
         print("🔎 Raw output:", output_raw)
-        notify_slack("TrendParasite", "fail", f"Error:\n```{str(e)}```")
+        notify_slack(
+            bot_name="TrendParasite",
+            status="fail",
+            message_block=f"Tweet failed.\n```{str(e)}```",
+            trend=selected,
+            tweet=output_raw if isinstance(output_raw, str) else str(output_raw),
+            hashtag="(unknown)",
+            context=context or "(no context)"
+        )

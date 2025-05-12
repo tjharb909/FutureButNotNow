@@ -160,11 +160,14 @@ def post_to_twitter(main_tweet, reply_text):
             os.environ["TWITTER_ACCESS_SECRET"]
         )
         api = tweepy.API(auth)
-        status = api.update_status(main_tweet)
-        api.update_status(status=reply_text, in_reply_to_status_id=status.id, auto_populate_reply_metadata=True)
-        print("✅ Tweet + CTA posted.")
+        
+        # Only post main tweet (no reply)
+        api.update_status(main_tweet)
+        print("✅ Main tweet posted successfully.")
+        
     except Exception as e:
         print("❌ Twitter post failed:", e)
+
 
 # ─────────────────────────────────────
 # MAIN

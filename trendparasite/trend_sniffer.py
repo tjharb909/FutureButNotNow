@@ -1,12 +1,12 @@
 import os
 import json
 import datetime
-import random
 from pathlib import Path
 import praw
 import tweepy
 from openai import OpenAI
 from dotenv import load_dotenv
+from slack_notifier import notify_slack
 
 # Load environment variables from .env if exists
 load_dotenv()
@@ -151,27 +151,20 @@ Return a JSON object with:
 # ─────────────────────────────────────
 def post_to_twitter(full_tweet):
     try:
-        auth = tweepy.OAuthHandler(
-            os.environ["TWITTER_API_KEY"],
-            os.environ["TWITTER_API_SECRET"]
+        client = tweepy.Client(
+            consumer_key=os.environ["TWITTER_API_KEY"],
+            consumer_secret=os.environ["TWITTER_API_SECRET"],
+            access_token=os.environ["TWITTER_ACCESS_TOKEN"],
+            access_token_secret=os.environ["TWITTER_ACCESS_SECRET"]
         )
-        auth.set_access_token(
-            os.environ["TWITTER_ACCESS_TOKEN"],
-            os.environ["TWITTER_ACCESS_SECRET"]
-        )
-        api = tweepy.API(auth)
-        api.update_status(full_tweet)
+        client.create_tweet(text=full_tweet)
         print("✅ Tweet posted successfully.")
     except Exception as e:
         print("❌ Twitter post failed:", e)
+        notify_slack("TrendParasite", "fail", f"Error:\n```{str(e)}```")
 
-# ─────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────
 if __name__ == "__main__":
     print(f"🗓️ TrendParasite — {datetime.datetime.now().strftime('%Y-%m-%d')}")
-
-    # Load trends and filter out used ones
     trends = fetch_reddit_trends()
     memory = load_memory()
     recent = {entry["trend"] for entry in memory}
@@ -181,13 +174,11 @@ if __name__ == "__main__":
         print("🛑 No fresh trends available.")
         exit()
 
-    # Rank and select best
     ranked = score_trends(fresh_trends)
     selected = ranked[0]
     save_trend_to_memory(selected)
 
-    # Generate tweet
-    print(f"\n🧠 Selected Trend: {selected}\n")
+    print(f"🧠 Selected Trend: {selected}")
     output_raw = generate_tweet(selected)
 
     try:
@@ -195,19 +186,14 @@ if __name__ == "__main__":
         tweet = output.get("tweet", "").strip()
         cta = output.get("cta", "").strip()
         hashtag = output.get("hashtag", "").strip()
-
         if not tweet or not cta or not hashtag:
-            raise ValueError("Missing one or more required keys.")
-
-        # Combine into single tweet
+            raise ValueError("Missing required tweet components.")
         full_tweet = f"{tweet}\n{cta} {hashtag}"
         print("📤 Final Output:")
         print(json.dumps({"tweet": full_tweet}, indent=2))
-
-        # Post the full tweet
         post_to_twitter(full_tweet)
-
+        notify_slack("TrendParasite", "success", f"Posted:\n```{full_tweet}```")
     except Exception as e:
-        print("❌ Error parsing tweet output:", e)
-        print("🔎 Raw output from GPT:")
-        print(output_raw)
+        print("❌ Error parsing tweet:", e)
+        print("🔎 Raw output:", output_raw)
+        notify_slack("TrendParasite", "fail", f"Error:\n```{str(e)}```")

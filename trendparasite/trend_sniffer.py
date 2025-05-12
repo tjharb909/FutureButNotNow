@@ -104,7 +104,7 @@ def score_trends(trends):
     return [t for score, t in weights]
 
 # ─────────────────────────────────────
-Gigaom# GPT-4 Tweet Generator
+# Gigaom — GPT-4 Tweet Generator
 # ─────────────────────────────────────
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)

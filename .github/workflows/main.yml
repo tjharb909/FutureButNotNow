@@ -1,0 +1,35 @@
+name: 🔔 Slack Notifier Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-notification:
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: pip install requests
+
+      - name: 🔔 Trigger test Slack notification
+        run: |
+          python -c "
+import os, requests, json
+def notify_slack(bot, status, msg):
+    emoji = ':white_check_mark:' if status == 'success' else ':x:'
+    payload = {
+        'text': f'*{bot}* {emoji} - {msg}'
+    }
+    res = requests.post(os.environ['SLACK_WEBHOOK_URL'], data=json.dumps(payload), headers={'Content-Type': 'application/json'})
+    print(f'Slack response: {res.status_code}')
+notify_slack('SlackTest', 'success', 'This is a test from GitHub Actions.')

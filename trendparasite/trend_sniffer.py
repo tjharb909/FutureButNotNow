@@ -151,19 +151,17 @@ Return a JSON object with:
 # ─────────────────────────────────────
 def post_to_twitter(full_tweet):
     try:
-        auth = tweepy.OAuthHandler(
-            os.environ["TWITTER_API_KEY"],
-            os.environ["TWITTER_API_SECRET"]
+        client = tweepy.Client(
+            consumer_key=os.environ["TWITTER_API_KEY"],
+            consumer_secret=os.environ["TWITTER_API_SECRET"],
+            access_token=os.environ["TWITTER_ACCESS_TOKEN"],
+            access_token_secret=os.environ["TWITTER_ACCESS_SECRET"]
         )
-        auth.set_access_token(
-            os.environ["TWITTER_ACCESS_TOKEN"],
-            os.environ["TWITTER_ACCESS_SECRET"]
-        )
-        api = tweepy.API(auth)
-        api.update_status(full_tweet)
+        client.create_tweet(text=full_tweet)
         print("✅ Tweet posted successfully.")
     except Exception as e:
         print("❌ Twitter post failed:", e)
+
 
 # ─────────────────────────────────────
 # MAIN

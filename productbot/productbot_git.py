@@ -1,4 +1,4 @@
-import os
+
 import random
 import json
 import urllib.parse
@@ -7,6 +7,10 @@ import re
 import csv
 from datetime import datetime
 from openai import OpenAI
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
+
 from slack_notifier import notify_slack
 
 # === CONFIGURATION ===
@@ -26,6 +30,7 @@ PRODUCT_LIST_FILE = os.path.join(SCRIPT_DIR, "product_list.txt")
 USED_PRODUCTS_FILE = os.path.join(SCRIPT_DIR, "used_products.txt")
 LOG_DIR = "logs"
 LOG_FILE = os.path.join(LOG_DIR, "tweet_logs.csv")
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 
 # === SETUP ===
 openai_client = OpenAI(api_key=OPENAI_API_KEY)

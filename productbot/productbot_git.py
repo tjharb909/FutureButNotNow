@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 import random
 import json
@@ -6,7 +5,9 @@ import urllib.parse
 import tweepy
 import re
 import csv
+from datetime import datetime
 from openai import OpenAI
+from slack_notifier import notify_slack
 
 # === CONFIGURATION ===
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -164,39 +165,27 @@ def format_generated_tweet(tweet_text, cta, hashtags, link):
 # === MAIN ===
 def post_to_twitter():
     ensure_log_folder()
-
     try:
         product_title = get_next_unused_product()
-
         ai_data = get_ai_tweet(product_title)
         if not ai_data or not all(k in ai_data for k in ("tweet", "cta", "hashtags", "keywords")):
             print("✖ Failed to generate required tweet content.")
             log_tweet(product_title, "", "", [], "", "gen_fail")
+            notify_slack("ProductBot", "fail", "OpenAI generation failed.")
             return
-
         tweet_body = ai_data["tweet"].strip()
-        tweet_cta  = ai_data["cta"].strip()
-        hashtags   = ai_data.get("hashtags", [])
-        keywords   = ai_data.get("keywords", [])
-
-        aff_link   = generate_affiliate_link(keywords, product_title=product_title)
-        final_tweet= format_generated_tweet(tweet_body, tweet_cta, hashtags, aff_link)
-
-        print("Tweeting:\n", final_tweet)
-
-        try:
-            twitter_client.create_tweet(text=final_tweet)
-            log_tweet(product_title, tweet_body, tweet_cta, hashtags, aff_link, "success")
-            print("[✓] Tweet posted successfully.")
-        except Exception as e:
-            status = "rate_limited" if "429" in str(e) else "tweet_error"
-            print(f"[🔥 TWEET ERROR]: {e}")
-            log_tweet(product_title, tweet_body, tweet_cta, hashtags, aff_link, status)
-
+        tweet_cta = ai_data["cta"].strip()
+        hashtags = ai_data.get("hashtags", [])
+        keywords = ai_data.get("keywords", [])
+        aff_link = generate_affiliate_link(keywords, product_title)
+        final_tweet = format_generated_tweet(tweet_body, tweet_cta, hashtags, aff_link)
+        twitter_client.create_tweet(text=final_tweet)
+        log_tweet(product_title, tweet_body, tweet_cta, hashtags, aff_link, "success")
+        print("[✓] Tweet posted successfully.")
+        notify_slack("ProductBot", "success", f"Posted:\n```{final_tweet}```")
     except Exception as outer:
-        print(f"[🔥 OUTER ERROR]: {outer}")
-
-# === ENTRY POINT ==============================================
+        print(f"[🔥 ERROR]: {outer}")
+        notify_slack("ProductBot", "fail", f"Error:\n```{str(outer)}```")
 
 if __name__ == "__main__":
     post_to_twitter()

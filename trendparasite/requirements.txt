@@ -1,5 +1,5 @@
-openai
-tweepy
-requests
-praw
-python-dotenv
+openai>=1.0.0
+tweepy>=4.14.0
+praw>=7.7.1
+python-dotenv>=1.0.1
+requests>=2.31.0

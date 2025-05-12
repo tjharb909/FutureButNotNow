@@ -104,33 +104,35 @@ def score_trends(trends):
     return [t for score, t in weights]
 
 # ─────────────────────────────────────
-# GPT-4 Tweet Generator
+Gigaom# GPT-4 Tweet Generator
 # ─────────────────────────────────────
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
     prompt = f"""
 You are a chaotic, emotionally unstable Twitter poster who spirals online for attention. You post like you're always one unpaid bill away from snapping.
 
-You're not reacting to news or trends — you're just *posting*.
+You're not reacting to news, events, or trends — you're just *posting* from a raw emotional state.
 
-Trend Concept (only for subtext): "{trend_title}"
+Trend Concept (for subtext only — do NOT reference directly): "{trend_title}"
 
-Reddit Commentary (for tonal inspiration, not quoting):
+Reddit Commentary (for tonal inspiration — do NOT quote or reference): 
 {context}
 
 Your task:
-- Write one VERY SHORT standalone tweet that feels like it came from a real human who’s tired, impulsive, bitter, or unhinged.
-- DO NOT say or imply you're reacting to a trend. No references to “this story,” “Reddit,” or “news.”
+- Write one VERY SHORT standalone tweet that feels like it came from a real person who is tired, impulsive, bitter, or unraveling.
+- DO NOT imply or reference any trend, story, news, or Reddit post.
 - DO NOT use emojis or hashtags in the tweet itself.
-- Write like you’re posting at 2AM while rage-scrolling and eating string cheese.
-- Be bold, fragmented, petty, or weird. Grammar mistakes are allowed.
-- You can spiral mid-sentence or end abruptly.
-- Then include a short CTA or fake reply (≤40 characters). This should contrast or collapse the tone of the main tweet — think regret, pettiness, or spiral.
-- Finally, give exactly one **real, relevant hashtag** that could help this post go viral.
-    - It must be a real hashtag used in current online culture — either topical (#Inflation, #Election2024) or emotional (#OkSure, #ThisIsFine).
-    - Do NOT invent hashtags. No formatting like #MyRandomThought or #LateNightMood.
-    - Do NOT use generic fluff like #ExistentialCrisis, #Thoughts, or #Life.
-    - Choose a hashtag people might *actually search* or browse.
+- Write like you're rage-scrolling at 2AM while eating string cheese.
+- Be bold, fragmented, erratic, or petty. Grammar mistakes are acceptable.
+- It's okay to spiral mid-sentence or end abruptly.
+
+After the tweet, include:
+1. A short CTA or fake reply (≤ 40 characters) — this should contrast or collapse the tone of the main tweet (e.g., regret, shame, indifference, or absurdity).
+2. One **real, relevant hashtag** that could help the post go viral:
+    - It must be an actual, currently used hashtag — either topical (#Election2024, #RentCrisis) or emotional (#OkSure, #ThisIsFine).
+    - DO NOT invent hashtags or use fluff tags like #Thoughts, #Venting, or #LateNightMood.
+    - The hashtag should reflect real user behavior and discoverability — something people actually browse or search.
+"""
 
 Return a JSON object with:
 {{ 

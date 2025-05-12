@@ -108,18 +108,20 @@ def create_prompt_from_product(product_title):
         f"Think “Black‑Mirror diary meets late‑night group chat.” You don’t promote — you overshare.\n\n"
         f"Product: {product_title}\n\n"
         f"Return a raw JSON object with exactly four keys:\n"
-        f"- 'tweet': A first‑person brain‑dump that *implies* using the product. Keep it punchy, weirdly personal, and secretly funny. Max 150 chars, no hashtags NO EMOJIS.\n"
-        f"- 'cta': A kicker line (≤40 chars) that flips the vibe — irony, side‑eye, or a meta wink.\n"
-        f"- 'hashtags': Exactly two camelCase tags (no # symbols) that are relevant and applicable.\n"
-        f"- 'keywords': One short noun‑phrase shoppers would type into Amazon.\n\n"
-        f"Rules:\n"
-        f"- 'hashtags': Required. Must be a list of two short camelCase tags. Do not omit (not part of the body).\n"
-        f"- Inside 'tweet' and 'cta' **do not type “#”** — all hashtags go exclusively in the 'hashtags' list.\n"
-        f"- Total length of 'tweet' + 'cta' must stay ≤ 220 characters.\n"
-        f"- Output *only* the JSON object. No prose, markdown, or commentary.\n"
-        f"- Voice = cryptic voice‑memo from someone living six minutes ahead of reality.\n"
-        f"- No Emjois.\n"
+        f"- 'tweet': A first‑person brain‑dump that *implies* using the product. Punchy, weirdly personal, secretly funny. Max 150 chars. ABSOLUTELY NO hashtags, emojis, or marketing tone.\n"
+        f"- 'cta': A short second thought or meta-comment (≤40 chars) — ironic, regretful, or jarring.\n"
+        f"- 'hashtags': A list of **exactly two camelCase tags**, relevant to the product. DO NOT include the # symbol.\n"
+        f"- 'keywords': A short Amazon search phrase a buyer might use.\n\n"
+        f"Strict Rules:\n"
+        f"- 'hashtags': Must be a JSON list of exactly two camelCase strings (e.g. ['smartMug', 'futureGadget']).\n"
+        f"- Do NOT include hashtags or the '#' symbol **anywhere** in 'tweet' or 'cta'. Not even stylistically.\n"
+        f"- If you break this, your response will be rejected by the system. Obey exactly.\n"
+        f"- 'tweet' + 'cta' combined must be ≤ 220 characters.\n"
+        f"- Output only a clean JSON object with no commentary.\n"
+        f"- Voice = cryptic voice‑memo from someone six minutes ahead of reality.\n"
+        f"- No emojis. No hashtags. No markdown.\n"
     )
+
 
 def get_ai_tweet(product_title, retries=2):
     prompt = create_prompt_from_product(product_title)

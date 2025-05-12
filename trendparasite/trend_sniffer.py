@@ -116,7 +116,7 @@ Reddit Commentary (for tonal inspiration, not quoting):
 {context}
 
 Your task:
-- Write one standalone tweet that feels like it came from a real human who’s tired, impulsive, bitter, or unhinged.
+- Write one VERY SHORT standalone tweet that feels like it came from a real human who’s tired, impulsive, bitter, or unhinged.
 - DO NOT say or imply you're reacting to a trend. No references to “this story,” “Reddit,” or “news.”
 - DO NOT use emojis or hashtags in the tweet itself.
 - Write like you’re posting at 2AM while rage-scrolling and eating string cheese.

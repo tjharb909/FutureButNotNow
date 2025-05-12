@@ -1,10 +1,12 @@
-name: FutureButNotNow Triple Bot Schedule
+name: TrendParasite Manual Test
+
+on:
+  workflow_dispatch:  # Trigger manually only
 
 jobs:
-  trendparasite1:
-    if: github.event.schedule == '0 18 * * *' || github.event_name == 'workflow_dispatch'
+  trendparasite:
     runs-on: ubuntu-latest
-    name: 🧠 TrendParasite — Midday Snipe
+    name: 🧠 Run TrendParasite (Manual Test)
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -20,10 +22,10 @@ jobs:
       REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
+      - name: 🐍 Set Up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'

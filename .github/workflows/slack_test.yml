@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-notification:
+  test-slack:
     runs-on: ubuntu-latest
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
       - name: 🐍 Set up Python
@@ -21,14 +21,14 @@ jobs:
       - name: 📦 Install requests
         run: pip install requests
 
-      - name: 🔔 Send Slack Test Message
+      - name: 🔔 Post Slack Message
         run: |
-          python -c "
-import os, requests, json
-webhook = os.environ.get('SLACK_WEBHOOK_URL')
-msg = {
-  'text': '*SlackTest* :white_check_mark: - This is a test from GitHub Actions.'
-}
-res = requests.post(webhook, data=json.dumps(msg), headers={'Content-Type': 'application/json'})
-print(f'Slack response: {res.status_code} - {res.text}')
-"
+          echo "import os" > slack_test.py
+          echo "import requests" >> slack_test.py
+          echo "import json" >> slack_test.py
+          echo "webhook = os.environ['SLACK_WEBHOOK_URL']" >> slack_test.py
+          echo "payload = {'text': '*SlackTest* :white_check_mark: This is a test from GitHub Actions.'}" >> slack_test.py
+          echo "headers = {'Content-Type': 'application/json'}" >> slack_test.py
+          echo "res = requests.post(webhook, headers=headers, data=json.dumps(payload))" >> slack_test.py
+          echo "print(f'Slack response: {res.status_code}')" >> slack_test.py
+          python slack_test.py

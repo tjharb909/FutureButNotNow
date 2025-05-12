@@ -21,6 +21,8 @@ jobs:
       REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
       REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
 
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4

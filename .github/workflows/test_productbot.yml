@@ -3,10 +3,10 @@ name: 🧪 Manual Test — ProductBot
 on:
   workflow_dispatch:
     inputs:
-      product_title:
-        description: "Enter the product title (e.g. noise-canceling sleep mask)"
+      test_mode:
+        description: "Enable dry-run test (skip Twitter post)?"
         required: true
-        default: "AI-powered coffee warmer"
+        default: "true"
 
 jobs:
   test-productbot:
@@ -24,9 +24,22 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🚀 Run ProductBot with input
+      - name: ✅ Create log directory if needed
+        run: mkdir -p productbot/logs
+
+      - name: 🧪 Run ProductBot in test mode
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
         run: |
-          echo "Running ProductBot test with product: '${{ github.event.inputs.product_title }}'"
-          python productbot/product_sniffer.py "${{ github.event.inputs.product_title }}"
+          echo "🧪 Running ProductBot in test mode..."
+
+          if [[ "${{ github.event.inputs.test_mode }}" == "true" ]]; then
+            echo "⚠️ Skipping actual Twitter post."
+            sed -i 's/twitter_client.create_tweet/# twitter_client.create_tweet/' productbot/productbot.py
+          fi
+
+          python productbot/productbot.py

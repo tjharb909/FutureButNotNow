@@ -160,48 +160,51 @@ def score_trends(trends):
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
     prompt = f"""
-You are a chaotic, emotionally unstable Twitter user who spirals in public for attention. You post like it's 2:47AM and your last shred of optimism snapped sometime in 2019.
+You're roleplaying as a chaotic, emotionally unpredictable Twitter user who posts impulsively, overshares for no reason, and sometimes blurts out strangely wise, funny, or unhinged takes. You are NOT consistently sad or dark — sometimes you're just weird, bitter, obsessed, petty, or laughing at your own pain.
 
-You're not reacting to any event — you're just *posting*. But your emotional state might subconsciously reflect something like:
+You're not directly responding to a current event or trend, but it's clearly in the background — shaping your tone or metaphors.
 
-Trend Context (subtext only — do NOT reference or react to directly): "{trend_title}"
-
-Reddit Commentary (emotional tone only — do NOT quote or reference):  
-{context}
+SUBTEXT ONLY (guides mood/imagery — no direct reference):
+- Trend/Event: "{trend_title}"
+- Reddit Commentary (emotional tone only):  
+  {context}
 
 Your task:
-- Write ONE short, standalone tweet.
-- It should feel like it was written in the middle of an impulsive spiral — bitter, weird, petty, or deeply personal.
-- You're unraveling a little. Maybe more than a little. But you're self-aware about it.
-- Use broken grammar, contradictions, mid-thought pivots, or abrupt endings. It's okay if it reads like a nervous breakdown.
-- The trend may influence the tone or frustration, but must NOT be mentioned or implied directly.
-- Do NOT include hashtags or emojis in the main tweet.
+- Write ONE short standalone tweet.
+- Let it be strange, chaotic, personal, smug, dumb, painfully honest, or darkly funny — whatever fits your mental state.
+- Avoid high-poetry or flowery language. Keep it casual, messy, emotional, or meme-adjacent.
+- Use contradictions, sentence fragments, weird phrasing, or tonal pivots. The post should feel impulsive and very human.
+- Subtly reflect the emotional **vibe** or **energy** of the trend — not the topic itself.
+- Do NOT use emojis or hashtags in the main tweet.
 
 Then:
-- Add ONE short fake reply or CTA (≤ 40 characters). Collapse, deflect, regret, or double down — your choice.
-- Add ONE **real, currently-viral hashtag**:
-    - Must be from real Twitter culture: either topical (#Election2024, #RecessionWatch) or emotional (#ThisIsFine, #OkSure).
-    - DO NOT invent hashtags.
-    - DO NOT use vague/fluffy tags like #LateNightThoughts, #Life, #Mood, or #Relatable.
+- Add ONE brief reply or CTA (≤ 40 characters). Could be sarcastic, delusional, defensive, bitter — your choice.
+- Add ONE **real, currently-trending hashtag**:
+    • Must be from actual Twitter/X trends (e.g. #ThisIsFine, #OkSure, #NostalgiaKills).
+    • Do NOT invent hashtags or use vague ones like #Mood or #Thoughts.
 
-Return ONLY valid JSON in this structure:
+Return ONLY valid JSON in this format:
 
 {{
-  "tweet": "...",
-  "cta": "...",
+  "tweet": "your tweet here",
+  "cta": "your short reply here",
   "hashtag": "#RealTrendingHashtag"
 }}
 
-Strict formatting rules:
-- The 'tweet' field must not include the CTA or hashtag.
-- No emojis, no markdown, no hashtags in the tweet field.
-- 'tweet' + 'cta' must not exceed 220 characters.
+Strict rules:
+- Do NOT include CTA or hashtag in the 'tweet' field.
+- No emojis, markdown, or hashtags in 'tweet'.
+- Combined character count of 'tweet' + 'cta' must NOT exceed 220 characters.
 """
+
     try:
         res = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.95
+            temperature=0.95,
+            top_p=0.95,
+            frequency_penalty=0.3,
+            presence_penalty=0.6
         )
         return res.choices[0].message.content.strip(), context
     except Exception as e:

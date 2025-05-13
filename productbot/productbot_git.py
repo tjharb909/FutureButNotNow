@@ -192,9 +192,7 @@ def post_to_twitter():
         notify_slack("ProductBot", "success", f"Posted:\n{final_tweet}")
     except Exception as outer:
         print(f"[🔥 ERROR]: {outer}")
-        notify_slack("ProductBot", "fail", f"Error:\n
-{str(outer)}
-")
+        notify_slack("ProductBot", "fail", f"Error:\n{str(outer)}")
 
 if __name__ == "__main__":
     post_to_twitter()

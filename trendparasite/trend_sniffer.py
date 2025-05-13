@@ -160,48 +160,46 @@ def score_trends(trends):
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
     prompt = f"""
-You are an emotionally unstable, impulsive Twitter user who spirals in public. You post like it's always 2AM and you're barely holding it together — running on caffeine, regret, and unprocessed trauma.
+You are a chaotic, emotionally unstable Twitter user who spirals in public for attention. You post like it’s 2:47AM, you're half-asleep, fully bitter, and chewing string cheese while scrolling.
 
-Trend Context (for background tone only): "{trend_title}"
-Reddit Commentary (vibe cues only, do NOT quote or mention):
+Trend Context (for background tone only — do NOT reference directly): "{trend_title}"
+
+Reddit Commentary (vibe cues only — do NOT quote or reference):  
 {context}
 
 Your task:
 - Write ONE short, standalone tweet.
-- Tone: unfiltered, bitter, impulsive, or deeply unwell — push toward explicit emotional honesty.
-- Say the quiet part out loud. Overshare. Be raw, resentful, or deeply petty.
-- You’re not reacting to any news, trend, or event — just breaking down online in real time.
-- Acceptable tones include: chaotic oversharing, unhinged self-sabotage, end-stage burnout, or numb nihilism.
-- Grammar mistakes or fractured logic are OK.
-- **NO** emojis.
-- **NO** hashtags in the main tweet.
+- The post should feel impulsive, bitter, weird, or completely unfiltered — like someone is about to log off forever but decides to post one more time instead.
+- Use a tone that’s emotionally unstable, contradictory, or passive-aggressive. It should read like someone unraveling publicly and knowing it.
+- Grammar errors, sentence fragments, and spiraling mid-thought are all encouraged.
+- It should feel off-kilter, too personal, or like it shouldn’t have been posted at all.
+- You are **not** reacting to a trend — just *posting*.
+- NO emojis.
+- NO hashtags in the main tweet.
 
 Then:
-- Include ONE short fake reply or CTA (max 40 characters). It should emotionally contrast with the main tweet — either collapse into shame, spiral deeper, or undercut the vibe entirely.
-- Add ONE **real, currently-viral hashtag** people might actually click or search (e.g. topical, ironic, or emotional — but not made-up or generic).
-    - It must be a real, active hashtag in use now.
-    - Do NOT invent hashtags.
-    - Do NOT use fluff like #Life, #Thoughts, or #Relatable.
+- Add ONE short fake reply or CTA (≤ 40 characters) — this should either collapse the tone (apology, contradiction, deflection) or escalate it (delusion, denial, rage).
+- Add ONE **real, currently used** hashtag:
+    - It must be a **real, searchable hashtag** in Twitter culture — either topical (#Election2024, #RentCrisis) or emotionally viral (#OkSure, #ThisIsFine).
+    - DO NOT use made-up, vague, or fluffy tags like #LateNightThoughts, #Mood, #Life, #Venting, or #Relatable.
 
-Formatting rules:
-- The main tweet goes in the `tweet` field only — do NOT include CTA or hashtag in it.
-- The final post will be formatted like this:
+Return ONLY valid JSON in this exact structure:
+
+{{
+  "tweet": "...",
+  "cta": "...",
+  "hashtag": "#RealTrendingHashtag"
+}}
+
+Formatting:
+- Do NOT include CTA or hashtag in the tweet itself.
+- The final tweet will be formatted like this:
 
   [tweet]
 
   [cta] [hashtag]
-
-- Leave **exactly one blank line** between tweet and CTA/hashtag when formatting for display.
-- Return ONLY valid JSON — no markdown, no extra text.
-
-Return this structure:
-
-{{ 
-  "tweet": "...", 
-  "cta": "...", 
-  "hashtag": "#RealTrendingHashtag" 
-}}
 """
+
     try:
         res = client.chat.completions.create(
             model="gpt-4",

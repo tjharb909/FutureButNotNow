@@ -22,8 +22,10 @@ client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 # Constants & Files
 # ─────────────────────────────────────
 MEMORY_FILE = Path("used_trends.json")
+TREND_METADATA_FILE = Path("trend_metadata.json")
+
 VIRAL_KEYWORDS = [
-    "dies", "ban", "leak", "update", "fired", "explodes", 
+    "dies", "ban", "leak", "update", "fired", "explodes",
     "AI", "GPT", "parody", "war", "meme", "love"
 ]
 
@@ -41,31 +43,35 @@ def reddit_client():
 
 def fetch_reddit_trends():
     reddit = reddit_client()
-    titles = set()
-
-def extract_titles(posts):
     now = time.time()
-    max_age_seconds = 60 * 60 * 24  # 24 hours
-    for post in posts:
-        if post.stickied or post.over_18:
-            continue
-        if now - post.created_utc > max_age_seconds:
-            continue
-        title = post.title.strip()
-        if len(title) > 15 and not title.lower().startswith(("til", "meirl", "oc", "ama")):
-            titles.add(title)
-                titles.add(title)
+    max_age = 60 * 60 * 24  # 24 hours
+    trends = []
+    titles_seen = set()
+
+    subreddits = ["all", "TrueOffMyChest", "antiwork", "confession", "AmItheAsshole"]
+
+    def extract_from(sub, posts):
+        for post in posts:
+            if post.stickied or post.over_18:
+                continue
+            if now - post.created_utc > max_age:
+                continue
+            title = post.title.strip()
+            if title in titles_seen:
+                continue
+            if len(title) > 15 and not title.lower().startswith(("til", "meirl", "oc", "ama")):
+                trends.append({
+                    "title": title,
+                    "subreddit": post.subreddit.display_name,
+                    "score": post.score,
+                    "created_utc": post.created_utc
+                })
+                titles_seen.add(title)
 
     try:
-        extract_titles(reddit.subreddit("all").hot(limit=50))
-        if len(titles) < 10:
-            extract_titles(reddit.subreddit("all").rising(limit=30))
-        if len(titles) < 10:
-            extract_titles(reddit.subreddit("all").new(limit=30))
-        if len(titles) < 10:
-            extract_titles(reddit.subreddit("all").top(limit=30))
-
-        return sorted(titles, key=lambda x: -len(x))[:15]
+        for sub in subreddits:
+            extract_from(sub, reddit.subreddit(sub).hot(limit=30))
+        return trends
     except Exception as e:
         print("❌ Reddit API error:", e)
         return []
@@ -107,22 +113,43 @@ def save_trend_to_memory(trend):
     memory.append({"trend": trend, "date": today})
     MEMORY_FILE.write_text(json.dumps(memory[-100:], indent=2))
 
+def save_trend_metadata(trend_obj):
+    data = []
+    if TREND_METADATA_FILE.exists():
+        data = json.loads(TREND_METADATA_FILE.read_text())
+    trend_obj["date"] = str(datetime.date.today())
+    data.append(trend_obj)
+    TREND_METADATA_FILE.write_text(json.dumps(data[-200:], indent=2))
+
 # ─────────────────────────────────────
 # Trend Scoring
 # ─────────────────────────────────────
 def score_trends(trends):
     weights = []
-    for t in trends:
+    now = time.time()
+
+    for trend in trends:
+        title = trend["title"]
+        t_lower = title.lower()
         score = 0
-        t_lower = t.lower()
+
         if any(k in t_lower for k in VIRAL_KEYWORDS):
             score += 10
-        if "?" in t:
+        if "?" in title:
             score += 2
-        if len(t) > 100:
+        if len(title) > 100:
             score -= 5
         score += sum(1 for word in t_lower.split() if word.istitle())
-        weights.append((score, t))
+
+        # New scoring logic
+        if trend.get("score", 0) > 5000:
+            score += 3
+        age_minutes = (now - trend.get("created_utc", now)) / 60
+        if age_minutes < 120:
+            score += 2
+
+        weights.append((score, trend))
+
     weights.sort(reverse=True)
     return [t for score, t in weights]
 
@@ -140,12 +167,11 @@ Reddit Commentary (vibe cues only, do NOT quote or mention):
 
 Your task:
 - Write ONE short, standalone tweet.
-- Tone: unfiltered, bitter, impulsive, or deeply unwell — push toward **explicit emotional honesty**.
+- Tone: unfiltered, bitter, impulsive, or deeply unwell — push toward explicit emotional honesty.
 - Say the quiet part out loud. Overshare. Be raw, resentful, or deeply petty.
 - You’re not reacting to any news, trend, or event — just breaking down online in real time.
 - Acceptable tones include: chaotic oversharing, unhinged self-sabotage, end-stage burnout, or numb nihilism.
 - Grammar mistakes or fractured logic are OK.
-- Be short and punchy — but not vague or poetic.
 - **NO** emojis.
 - **NO** hashtags in the main tweet.
 
@@ -165,17 +191,16 @@ Formatting rules:
   [cta] [hashtag]
 
 - Leave **exactly one blank line** between tweet and CTA/hashtag when formatting for display.
-- Return ONLY valid JSON — no markdown, quotes, or extra output.
+- Return ONLY valid JSON — no markdown, no extra text.
 
 Return this structure:
 
-{{
-  "tweet": "...",
-  "cta": "...",
-  "hashtag": "#RealTrendingHashtag"
+{{ 
+  "tweet": "...", 
+  "cta": "...", 
+  "hashtag": "#RealTrendingHashtag" 
 }}
 """
-
     try:
         res = client.chat.completions.create(
             model="gpt-4",
@@ -187,7 +212,7 @@ Return this structure:
         return f"ERROR: {e}", None
 
 # ─────────────────────────────────────
-# Twitter Posting (Main Tweet Only)
+# Twitter Posting
 # ─────────────────────────────────────
 def post_to_twitter(full_tweet):
     try:
@@ -215,8 +240,8 @@ if __name__ == "__main__":
         exit()
 
     memory = load_memory()
-    recent = {entry["trend"] for entry in memory}
-    fresh_trends = [t for t in trends if t not in recent]
+    recent_titles = {entry["trend"] for entry in memory}
+    fresh_trends = [t for t in trends if t["title"] not in recent_titles]
 
     if not fresh_trends:
         print("🛑 No fresh trends available.")
@@ -224,10 +249,12 @@ if __name__ == "__main__":
 
     ranked = score_trends(fresh_trends)
     selected = ranked[0]
-    save_trend_to_memory(selected)
 
-    print(f"🧠 Selected Trend: {selected}")
-    output_raw, context = generate_tweet(selected)
+    save_trend_to_memory(selected["title"])  # existing memory
+    save_trend_metadata(selected)            # new metadata
+
+    print(f"🧠 Selected Trend: {selected['title']}")
+    output_raw, context = generate_tweet(selected["title"])
 
     try:
         output = json.loads(output_raw)
@@ -236,7 +263,7 @@ if __name__ == "__main__":
         hashtag = output.get("hashtag", "").strip()
         if not tweet or not cta or not hashtag:
             raise ValueError("Missing required tweet components.")
-        full_tweet = f"{tweet}\n{cta} {hashtag}"
+        full_tweet = f"{tweet}\n\n{cta} {hashtag}"
         print("📤 Final Output:")
         print(json.dumps({"tweet": full_tweet}, indent=2))
         post_to_twitter(full_tweet)
@@ -244,7 +271,7 @@ if __name__ == "__main__":
             bot_name="TrendParasite",
             status="success",
             message_block=f"Tweet posted successfully.",
-            trend=selected,
+            trend=selected["title"],
             tweet=full_tweet,
             hashtag=hashtag,
             context=context
@@ -256,7 +283,7 @@ if __name__ == "__main__":
             bot_name="TrendParasite",
             status="fail",
             message_block=f"Tweet failed.\n```{str(e)}```",
-            trend=selected,
+            trend=selected["title"],
             tweet=output_raw if isinstance(output_raw, str) else str(output_raw),
             hashtag="(unknown)",
             context=context or "(no context)"

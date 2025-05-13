@@ -141,7 +141,6 @@ def score_trends(trends):
             score -= 5
         score += sum(1 for word in t_lower.split() if word.istitle())
 
-        # New scoring logic
         if trend.get("score", 0) > 5000:
             score += 3
         age_minutes = (now - trend.get("created_utc", now)) / 60
@@ -150,8 +149,10 @@ def score_trends(trends):
 
         weights.append((score, trend))
 
-    weights.sort(reverse=True)
+    # ✅ Sort by score only (avoids comparing dicts)
+    weights.sort(key=lambda x: x[0], reverse=True)
     return [t for score, t in weights]
+
 
 # ─────────────────────────────────────
 # GPT-4 Tweet Generator

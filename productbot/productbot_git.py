@@ -189,9 +189,7 @@ def post_to_twitter():
         twitter_client.create_tweet(text=final_tweet)
         log_tweet(product_title, tweet_body, tweet_cta, hashtags, aff_link, "success")
         print("[✓] Tweet posted successfully.")
-        notify_slack("ProductBot", "success", f"Posted:\n
-{final_tweet}
-")
+        notify_slack("ProductBot", "success", f"Posted:\n{final_tweet}")
     except Exception as outer:
         print(f"[🔥 ERROR]: {outer}")
         notify_slack("ProductBot", "fail", f"Error:\n

@@ -1,5 +1,6 @@
 import json
 import datetime
+import time
 from pathlib import Path
 import praw
 import tweepy
@@ -42,12 +43,17 @@ def fetch_reddit_trends():
     reddit = reddit_client()
     titles = set()
 
-    def extract_titles(posts):
-        for post in posts:
-            if post.stickied or post.over_18:
-                continue
-            title = post.title.strip()
-            if len(title) > 15 and not title.lower().startswith(("til", "meirl", "oc", "ama")):
+def extract_titles(posts):
+    now = time.time()
+    max_age_seconds = 60 * 60 * 24  # 24 hours
+    for post in posts:
+        if post.stickied or post.over_18:
+            continue
+        if now - post.created_utc > max_age_seconds:
+            continue
+        title = post.title.strip()
+        if len(title) > 15 and not title.lower().startswith(("til", "meirl", "oc", "ama")):
+            titles.add(title)
                 titles.add(title)
 
     try:

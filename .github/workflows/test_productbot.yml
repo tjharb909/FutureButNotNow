@@ -1,0 +1,32 @@
+name: 🧪 Manual Test — ProductBot
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_title:
+        description: "Enter the product title (e.g. noise-canceling sleep mask)"
+        required: true
+        default: "AI-powered coffee warmer"
+
+jobs:
+  test-productbot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧾 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: 🚀 Run ProductBot with input
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "Running ProductBot test with product: '${{ github.event.inputs.product_title }}'"
+          python productbot/product_sniffer.py "${{ github.event.inputs.product_title }}"

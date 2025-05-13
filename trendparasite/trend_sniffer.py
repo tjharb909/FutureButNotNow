@@ -7,8 +7,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 from slack_notifier import notify_slack
 
 # Load environment variables from .env if exists
@@ -21,7 +21,10 @@ client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 # Constants & Files
 # ─────────────────────────────────────
 MEMORY_FILE = Path("used_trends.json")
-VIRAL_KEYWORDS = ["dies", "ban", "leak", "update", "fired", "explodes", "AI", "GPT", "parody", "war", "meme", "love"]
+VIRAL_KEYWORDS = [
+    "dies", "ban", "leak", "update", "fired", "explodes", 
+    "AI", "GPT", "parody", "war", "meme", "love"
+]
 
 # ─────────────────────────────────────
 # Reddit Client (via PRAW)
@@ -38,13 +41,24 @@ def reddit_client():
 def fetch_reddit_trends():
     reddit = reddit_client()
     titles = set()
-    try:
-        for post in reddit.subreddit("all").hot(limit=50):
+
+    def extract_titles(posts):
+        for post in posts:
             if post.stickied or post.over_18:
                 continue
             title = post.title.strip()
             if len(title) > 15 and not title.lower().startswith(("til", "meirl", "oc", "ama")):
                 titles.add(title)
+
+    try:
+        extract_titles(reddit.subreddit("all").hot(limit=50))
+        if len(titles) < 10:
+            extract_titles(reddit.subreddit("all").rising(limit=30))
+        if len(titles) < 10:
+            extract_titles(reddit.subreddit("all").new(limit=30))
+        if len(titles) < 10:
+            extract_titles(reddit.subreddit("all").top(limit=30))
+
         return sorted(titles, key=lambda x: -len(x))[:15]
     except Exception as e:
         print("❌ Reddit API error:", e)
@@ -72,16 +86,19 @@ def fetch_reddit_context(trend):
         return f"(Failed to fetch Reddit context: {e})"
 
 # ─────────────────────────────────────
-# Memory
+# Memory (24-Hour Reset)
 # ─────────────────────────────────────
 def load_memory():
-    if MEMORY_FILE.exists():
-        return json.loads(MEMORY_FILE.read_text())
-    return []
+    if not MEMORY_FILE.exists():
+        return []
+    memory = json.loads(MEMORY_FILE.read_text())
+    today = str(datetime.date.today())
+    return [entry for entry in memory if entry.get("date") == today]
 
 def save_trend_to_memory(trend):
-    memory = load_memory()
-    memory.append({"trend": trend, "date": str(datetime.date.today())})
+    today = str(datetime.date.today())
+    memory = [entry for entry in load_memory() if entry.get("date") == today]
+    memory.append({"trend": trend, "date": today})
     MEMORY_FILE.write_text(json.dumps(memory[-100:], indent=2))
 
 # ─────────────────────────────────────
@@ -104,7 +121,7 @@ def score_trends(trends):
     return [t for score, t in weights]
 
 # ─────────────────────────────────────
-# Gigaom — GPT-4 Tweet Generator
+# GPT-4 Tweet Generator
 # ─────────────────────────────────────
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
@@ -171,7 +188,12 @@ def post_to_twitter(full_tweet):
 # ─────────────────────────────────────
 if __name__ == "__main__":
     print(f"🗓️ TrendParasite — {datetime.datetime.now().strftime('%Y-%m-%d')}")
+    
     trends = fetch_reddit_trends()
+    if not trends:
+        print("🛑 Failed to fetch trends.")
+        exit()
+
     memory = load_memory()
     recent = {entry["trend"] for entry in memory}
     fresh_trends = [t for t in trends if t not in recent]

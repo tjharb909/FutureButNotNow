@@ -42,4 +42,4 @@ jobs:
             sed -i 's/twitter_client.create_tweet/# twitter_client.create_tweet/' productbot/productbot.py
           fi
 
-          python productbot/productbot.py
+          python productbot/productbot_git.py

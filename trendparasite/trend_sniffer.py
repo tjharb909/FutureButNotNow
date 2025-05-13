@@ -180,8 +180,8 @@ Your task:
 Then:
 - Add ONE short fake reply or CTA (≤ 40 characters) — this should either collapse the tone (apology, contradiction, deflection) or escalate it (delusion, denial, rage).
 - Add ONE **real, currently used** hashtag:
-    - It must be a **real, searchable hashtag** in Twitter culture — either topical (#Election2024, #RentCrisis) or emotionally viral (#OkSure, #ThisIsFine).
-    - DO NOT use made-up, vague, or fluffy tags like #LateNightThoughts, #Mood, #Life, #Venting, or #Relatable.
+    - It must be a **real, searchable hashtag** in Twitter culture — either topical "(#Election2024, #RentCrisis) or emotionally viral (#OkSure, #ThisIsFine).
+    - DO NOT use made-up, vague, or fluffy tags like "(#LateNightThoughts, #Mood, #Life, #Venting, or #Relatable)
 
 Return ONLY valid JSON in this exact structure:
 

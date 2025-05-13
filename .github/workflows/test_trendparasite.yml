@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r trendparasite/requirements.txt
 
       - name: 🧪 Run TrendParasite (dry run)
         env:

@@ -10,7 +10,7 @@ on:
 jobs:
 
   productbot:
-    if: github.event.schedule == '0 13 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: 🤖 Run ProductBot
 
@@ -29,15 +29,22 @@ jobs:
       - name: 🚀 Run ProductBot
         run: python productbot/productbot_git.py
 
+      - name: 🔔 Notify Slack
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"✅ ProductBot just posted successfully."}' \
+          $SLACK_WEBHOOK_URL
+
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
       TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
       TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
       TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   trendparasite1:
-    if: github.event.schedule == '0 18 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: 🧠 Run TrendParasite (Afternoon)
 
@@ -56,6 +63,12 @@ jobs:
       - name: 🚀 Run TrendParasite 1
         run: python trendparasite/trend_sniffer.py
 
+      - name: 🔔 Notify Slack
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🧠 TrendParasite (Afternoon) completed successfully."}' \
+          $SLACK_WEBHOOK_URL
+
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
@@ -70,7 +83,7 @@ jobs:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   trendparasite2:
-    if: github.event.schedule == '0 22 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: 🧠 Run TrendParasite (Evening)
 
@@ -88,6 +101,12 @@ jobs:
 
       - name: 🚀 Run TrendParasite 2
         run: python trendparasite/trend_sniffer.py
+
+      - name: 🔔 Notify Slack
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🧠 TrendParasite (Evening) completed successfully."}' \
+          $SLACK_WEBHOOK_URL
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

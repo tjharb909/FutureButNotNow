@@ -180,8 +180,8 @@ Your task:
 Then:
 - Add ONE brief reply or CTA (≤ 40 characters). Could be sarcastic, delusional, defensive, bitter — your choice.
 - Add ONE **real, currently-trending hashtag**:
-    • Must be from actual Twitter/X trends (e.g. #ThisIsFine, #OkSure, #NostalgiaKills).
-    • Do NOT invent hashtags or use vague ones like #Mood or #Thoughts.
+    • Must be from actual relatable social trends!!
+    • Do NOT invent hashtags or use vague/complex ones!!
 
 Return ONLY valid JSON in this format:
 
@@ -204,7 +204,8 @@ Strict rules:
             temperature=0.95,
             top_p=0.95,
             frequency_penalty=0.3,
-            presence_penalty=0.6
+            presence_penalty=0.6,
+            max_token=250
         )
         return res.choices[0].message.content.strip(), context
     except Exception as e:

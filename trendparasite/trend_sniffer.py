@@ -205,7 +205,7 @@ Strict rules:
             top_p=0.95,
             frequency_penalty=0.3,
             presence_penalty=0.6,
-            max_token=250
+            max_tokens=250
         )
         return res.choices[0].message.content.strip(), context
     except Exception as e:

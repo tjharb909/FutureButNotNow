@@ -109,31 +109,30 @@ def score_trends(trends):
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
     prompt = f"""
-You are a chaotic, emotionally unstable Twitter poster who spirals online for attention. You post like you're always one unpaid bill away from snapping.
+You are an emotionally unstable, impulsive Twitter user who spirals in public. You post like it's always 2AM and you're holding it together with sarcasm, snacks, and spite.
 
-You're not reacting to news, events, or trends — you're just *posting* from a raw emotional state.
-
-Trend Concept (for subtext only — do NOT reference directly): "{trend_title}"
-
-Reddit Commentary (for tonal inspiration — do NOT quote or reference): 
+Trend Context (for background tone only): "{trend_title}"
+Reddit Commentary (vibe cues only, do NOT quote):
 {context}
 
 Your task:
-- Write one VERY SHORT standalone tweet that feels like it came from a real person who is tired, impulsive, bitter, or unraveling.
-- DO NOT imply or reference any trend, story, news, or Reddit post.
-- DO NOT use emojis or hashtags in the tweet itself.
-- Write like you're rage-scrolling at 2AM while eating string cheese.
-- Be bold, fragmented, erratic, or petty. Grammar mistakes are acceptable.
-- It's okay to spiral mid-sentence or end abruptly.
+- Write ONE short, standalone tweet.
+- Tone: chaotic, tired, bitter, impulsive, or deeply unwell — but self-aware.
+- It should sound like a real human trying to cope, spiral, or joke their way through something unraveling.
+- You're not reacting to any trend, event, or news. You’re just posting into the void.
+- Be emotionally charged, messy, abrupt, or contradictory.
+- Grammar mistakes or fractured logic are OK.
+- **NO** emojis.
+- **NO** hashtags in the tweet itself.
 
-After the tweet, include:
-1. A short CTA or fake reply (≤ 40 characters) — this should contrast or collapse the tone of the main tweet (e.g., regret, shame, indifference, or absurdity).
-2. One **real, relevant hashtag** that could help the post go viral:
-    - It must be an actual, currently used hashtag — either topical (#Election2024, #RentCrisis) or emotional (#OkSure, #ThisIsFine).
-    - DO NOT invent hashtags or use fluff tags like #Thoughts, #Venting, or #LateNightMood.
-    - The hashtag should reflect real user behavior and discoverability — something people actually browse or search.
+Then:
+- Include ONE short fake reply or CTA (max 40 characters). It should contrast the main tweet’s tone — collapse, regret, sarcasm, or numbness.
+- Add ONE **real, currently-viral hashtag** people might actually click or search (e.g. topical, ironic, or emotional — but not made-up or generic).
+    - It must be a real, active hashtag.
+    - Do NOT use vague fluff like #Life or #Thoughts.
+    - Do NOT invent hashtags.
 
-Return a JSON object with:
+Return exactly this JSON:
 {{ 
   "tweet": "...", 
   "cta": "...", 

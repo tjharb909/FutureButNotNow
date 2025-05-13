@@ -39,7 +39,7 @@ jobs:
 
           if [[ "${{ github.event.inputs.test_mode }}" == "true" ]]; then
             echo "⚠️ Skipping actual Twitter post."
-            sed -i 's/twitter_client.create_tweet/# twitter_client.create_tweet/' productbot/productbot.py
+            sed -i 's/twitter_client.create_tweet/# twitter_client.create_tweet/' productbot/productbot_git.py
           fi
 
           python productbot/productbot_git.py

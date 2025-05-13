@@ -8,20 +8,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  productbot:
-    if: github.event.schedule == '0 13 * * *' || github.event_name == 'workflow_dispatch'
+  runbots:
     runs-on: ubuntu-latest
-    name: 🤖 Run ProductBot
-
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-      TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    strategy:
+      matrix:
+        bot: [productbot, trendparasite1, trendparasite2]
 
     steps:
+      - name: ⏩ Skip unselected bot
+        if: >
+          (matrix.bot == 'productbot' && github.event.schedule != '0 13 * * *') ||
+          (matrix.bot == 'trendparasite1' && github.event.schedule != '0 18 * * *') ||
+          (matrix.bot == 'trendparasite2' && github.event.schedule != '0 22 * * *')
+        run: echo "Skipping this bot job for current time"; exit 0
+
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
@@ -30,49 +30,23 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 Install ProductBot Dependencies
-        run: pip install -r productbot/requirements.txt
+      - name: ⚙️ Install Dependencies
+        run: |
+          if [ "${{ matrix.bot }}" == "productbot" ]; then
+            pip install -r productbot/requirements.txt
+          else
+            pip install -r trendparasite/requirements.txt
+          fi
 
-      - name: 🚀 Run ProductBot
-        run: python productbot/productbot_git.py
-
-  trendparasite1:
-    if: github.event.schedule == '0 18 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    name: 🧠 TrendParasite — Midday Snipe
-
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-      TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
-      REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
-      REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
-      REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
-      REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
-      REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: 📦 Install Dependencies
-        run: pip install -r trendparasite/requirements.txt
-
-      - name: 🚀 Run TrendParasite
-        run: python trendparasite/trend_sniffer.py
-
-  trendparasite2:
-    if: github.event.schedule == '0 22 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    name: 🧠 TrendParasite — Evening Snipe
+      - name: 🚀 Run Bot
+        run: |
+          if [ "${{ matrix.bot }}" == "productbot" ]; then
+            python productbot/productbot_git.py
+          elif [ "${{ matrix.bot }}" == "trendparasite1" ]; then
+            python trendparasite/trend_sniffer.py
+          elif [ "${{ matrix.bot }}" == "trendparasite2" ]; then
+            python trendparasite/trend_sniffer.py
+          fi
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -86,18 +60,3 @@ jobs:
       REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
       REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: 📦 Install Dependencies
-        run: pip install -r trendparasite/requirements.txt
-
-      - name: 🚀 Run TrendParasite
-        run: python trendparasite/trend_sniffer.py

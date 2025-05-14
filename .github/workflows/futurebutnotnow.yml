@@ -10,7 +10,7 @@ on:
 jobs:
 
   productbot:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '30 13 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: 🤖 Run ProductBot
 
@@ -44,7 +44,7 @@ jobs:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   trendparasite1:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '0 18 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: 🧠 Run TrendParasite (Afternoon)
 
@@ -83,7 +83,7 @@ jobs:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   trendparasite2:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '0 22 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: 🧠 Run TrendParasite (Evening)
 

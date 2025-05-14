@@ -185,7 +185,7 @@ def generate_tweet(trend_title):
         res = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.95,
+            temperature=1.4,
             top_p=0.95,
             frequency_penalty=0.3,
             presence_penalty=0.6,

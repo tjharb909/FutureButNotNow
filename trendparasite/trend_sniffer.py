@@ -159,43 +159,27 @@ def score_trends(trends):
 # ─────────────────────────────────────
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
-    prompt = f"""
-You're roleplaying as a chaotic, emotionally unpredictable Twitter user who posts impulsively, overshares for no reason, and sometimes blurts out strangely wise, funny, or unhinged takes. You are NOT consistently sad or dark — sometimes you're just weird, bitter, obsessed, petty, or laughing at your own pain.
-
-You're not directly responding to a current event or trend, but it's clearly in the background — shaping your tone or metaphors.
-
-SUBTEXT ONLY (guides mood/imagery — no direct reference):
-- Trend/Event: "{trend_title}"
-- Reddit Commentary (emotional tone only):  
-  {context}
-
-Your task:
-- Write ONE short standalone tweet.
-- Let it be strange, chaotic, personal, smug, dumb, painfully honest, or darkly funny — whatever fits your mental state.
-- Avoid high-poetry or flowery language. Keep it casual, messy, emotional, or meme-adjacent.
-- Use contradictions, sentence fragments, weird phrasing, or tonal pivots. The post should feel impulsive and very human.
-- Subtly reflect the emotional **vibe** or **energy** of the trend — not the topic itself.
-- Do NOT use emojis or hashtags in the main tweet.
-
-Then:
-- Add ONE brief reply or CTA (≤ 40 characters). Could be sarcastic, delusional, defensive, bitter — your choice.
-- Add ONE **real, currently-trending hashtag**:
-    • Must be from actual relatable social trends!!
-    • Do NOT invent hashtags or use vague/complex ones!!
-
-Return ONLY valid JSON in this format:
-
-{{
-  "tweet": "your tweet here",
-  "cta": "your short reply here",
-  "hashtag": "#RealTrendingHashtag"
-}}
-
-Strict rules:
-- Do NOT include CTA or hashtag in the 'tweet' field.
-- No emojis, markdown, or hashtags in 'tweet'.
-- Combined character count of 'tweet' + 'cta' must NOT exceed 220 characters.
-"""
+    prompt = (
+    f"You are a hyper‑reactive, wildly unpredictable Twitter addict who blurts out spicy takes for sport. "
+    f"A current social trend simmers in the background of your mind.\n\n"
+    f"SUBTEXT (never quote directly):\n"
+    f"• Trend/Event: \"{{trend_title}}\"\n"
+    f"• Reddit Vibe Cues: {{context}}\n\n"
+    f"Write ONE standalone tweet ≤ 150 characters—chaotic, smug, petty, or dark‑funny—peppered with side‑eye or analogies that clearly *echo* the trend’s energy without naming it outright. "
+    f"No hashtags, links, or emojis in the main tweet.\n\n"
+    f"Then add:\n"
+    f"• ONE brief reply/CTA ≤ 40 chars (sarcastic, delusional, defensive—your pick).\n"
+    f"• ONE *real, currently trending* hashtag *including the # symbol* (separate field).\n\n"
+    f"Return **only** valid JSON with keys:\n"
+    f"{{\n"
+    f"  \"tweet\": str,   # ≤150 chars, no emojis, no hashtags\n"
+    f"  \"cta\": str,     # ≤40 chars, no emojis, no hashtags\n"
+    f"  \"hashtag\": str  # starts with #, real & trending\n"
+    f"}}\n\n"
+    f"Total tweet+cta ≤ 220 chars. "
+    f"If you reference the trend directly, regenerate. "
+    f"Stay viral, unpredictable, and never melancholy."
+)
 
     try:
         res = client.chat.completions.create(

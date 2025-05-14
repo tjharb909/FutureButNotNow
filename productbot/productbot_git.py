@@ -169,7 +169,7 @@ def generate_affiliate_link(keywords, product_title=None):
 def format_generated_tweet(tweet_text, cta, hashtags, link):
     body = f"{tweet_text} {cta}".strip()
     hashtag_line = " ".join(f"#{tag}" for tag in hashtags[:2])
-    full = f"{body}\n👉 {link}\n\n{hashtag_line}"
+    full = f"{body}\n {link}\n\n{hashtag_line}"
     if len(full) > MAX_TWEET_LENGTH:
         print("[Warning] Truncated tweet due to length")
         return full[:MAX_TWEET_LENGTH - 1] + "…"

@@ -109,35 +109,29 @@ def get_next_unused_product():
 # === AI PROMPT ===
 def create_prompt_from_product(product_title):
     return (
-        f"You are an extremely online, emotionally volatile human who overshares for engagement. "
-        f"You've been forced into affiliate content, but instead of selling products, you spiral about them in public like a menace with WiFi.\n\n"
-        f"Product: {product_title}\n\n"
-        f"Your task:\n"
-        f"- Write ONE tweet (≤ 150 characters) from a first-person POV. It should feel impulsive, unfiltered, and *deeply online* — like someone addicted to clout, chaos, or both.\n"
-        f"- Mention the product exactly ONCE, mid-thought. Do NOT explain what it is or how it works. It should feel like part of a breakdown, argument, or brag.\n"
-        f"- Tone: unhinged, combative, obsessive, chaotic, petty, or bizarrely proud. Think: someone trying to win an imaginary argument by bringing up their purchase.\n"
-        f"- It should NOT be sad or regretful. It should be messy, funny, or aggressively unserious.\n"
-        f"- Absolutely NO hashtags or emojis in the tweet.\n"
-        f"- Take risks! Be weird, surprising, or absurd. Reference internet drama, fake arguments, or personal vendettas if you want.\n"
-        f"- Example of a good tweet: 'If you think I bought the {product_title} for any reason other than spite, you clearly don't know me.'\n"
-        f"- Example of a bad tweet: 'The {product_title} is a great product. I use it every day.'\n\n"
-        f"Then:\n"
-        f"- Add ONE short fake reply or meta-comment (≤ 40 characters). It should escalate the chaos, contradict the tweet, or double down absurdly.\n"
-        f"- Add TWO camelCase-style hashtags describing the product — for metadata only (e.g. ['flowerFlex', 'yardAesthetic']). DO NOT include these in the tweet.\n"
-        f"- Add ONE realistic Amazon-style search phrase someone might use to find the product.\n\n"
-        f"Format Rules:\n"
-        f"- Return ONLY a valid JSON object with exactly four keys:\n"
-        f"  - 'tweet': string (≤ 150 characters, no hashtags or emojis)\n"
-        f"  - 'cta': string (≤ 40 characters, no hashtags or emojis)\n"
-        f"  - 'hashtags': list of two camelCase strings\n"
-        f"  - 'keywords': short Amazon search phrase\n"
-        f"- Combined length of 'tweet' + 'cta' must NOT exceed 220 characters.\n"
-        f"- DO NOT use the # symbol in any field.\n"
-        f"- DO NOT use emojis, markdown, or any kind of sales pitch.\n"
-        f"- Do NOT explain what the product is or how it works.\n"
-        f"- Do NOT sound like a bot or a marketer.\n"
-    )
-
+    f"You are a terminally‑online chaos gremlin who overshares for clout. "
+    f"Affiliate deals have hijacked your feed, but instead of selling you weaponize the product as a flex or petty jab.\n\n"
+    f"Product: {{product_title}}\n\n"
+    f"Write ONE tweet ≤ 150 characters, first‑person, impulsive, messy, and *never apologetic*. "
+    f"Mention the product **exactly once** after the first 3 words and before the last 10 words. "
+    f"Do NOT explain what it is, how it works, or why you bought it. "
+    f"Tonal palette: combative, obsessive, bizarrely proud, or shamelessly braggy—but never depressed or regretful. "
+    f"No emojis, no hashtags, no links inside the tweet.\n\n"
+    f"Then add:\n"
+    f"• ONE punchy follow‑up/CTA ≤ 40 chars that doubles‑down, contradicts, or escalates.\n"
+    f"• TWO camelCase metadata tags for the product (array).\n"
+    f"• ONE short Amazon‑style search phrase.\n\n"
+    f"Return **only** valid JSON with these keys in order:\n"
+    f"{{\n"
+    f"  \"tweet\": str,            # ≤150 chars, no #, no emojis\n"
+    f"  \"cta\": str,              # ≤40 chars, no #, no emojis\n"
+    f"  \"hashtags\": [str, str],  # camelCase tokens, no # symbol\n"
+    f"  \"keywords\": str          # Amazon search phrase\n"
+    f"}}\n\n"
+    f"Total length of tweet+cta ≤ 220 chars. "
+    f"Never include emojis, markdown, or sales copy. "
+    f"Example good tweet: “Bought the {{product_title}} just to prove timelines wrong—deal with it.”"
+)
 
 
 def get_ai_tweet(product_title, retries=2):
@@ -147,7 +141,7 @@ def get_ai_tweet(product_title, retries=2):
             response = openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=1.3,
+                temperature=1.4,
                 top_p=0.95,
                 frequency_penalty=0.2,
                 presence_penalty=0.6,

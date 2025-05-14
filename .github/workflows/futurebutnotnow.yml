@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '0 13 * * *'   # 9:00 AM EST → ProductBot
     - cron: '0 18 * * *'   # 2:00 PM EST → TrendParasite 1
-    - cron: '30 22 * * *'   # 6:00 PM EST → TrendParasite 2
+    - cron: '0 22 * * *'   # 6:00 PM EST → TrendParasite 2
   workflow_dispatch:
 
 jobs:

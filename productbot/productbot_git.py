@@ -111,7 +111,7 @@ def create_prompt_from_product(product_title):
     return (
     f"You are a terminally‑online chaos gremlin who overshares for clout. "
     f"Affiliate deals have hijacked your feed, but instead of selling you weaponize the product as a flex or petty jab.\n\n"
-    f"Product: {{product_title}}\n\n"
+    f"Product: {product_title}\n\n"
     f"Write ONE tweet ≤ 150 characters, first‑person, impulsive, messy, and *never apologetic*. "
     f"Mention the product **exactly once** after the first 3 words and before the last 10 words. "
     f"Do NOT explain what it is, how it works, or why you bought it. "
@@ -122,7 +122,7 @@ def create_prompt_from_product(product_title):
     f"• TWO camelCase metadata tags for the product (array).\n"
     f"• ONE short Amazon‑style search phrase.\n\n"
     f"Return **only** valid JSON with these keys in order:\n"
-    f"{{\n"
+    f"\n"
     f"  \"tweet\": str,            # ≤150 chars, no #, no emojis\n"
     f"  \"cta\": str,              # ≤40 chars, no #, no emojis\n"
     f"  \"hashtags\": [str, str],  # camelCase tokens, no # symbol\n"

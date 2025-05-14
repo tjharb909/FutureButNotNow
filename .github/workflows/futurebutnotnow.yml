@@ -10,7 +10,7 @@ on:
 jobs:
 
   productbot:
-    if: github.event.schedule == '30 13 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '0 13 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: 🤖 Run ProductBot
 

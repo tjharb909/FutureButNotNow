@@ -1,10 +1,11 @@
 ---
 name: ✨ FutureButNotNow Bot Scheduler
+
 on:
   schedule:
-    - cron: 0 13 * * *
-    - cron: 0 18 * * *
-    - cron: 30 22 * * *
+    - cron: 0 13 * * *     #  9:00 AM EST → ProductBot
+    - cron: 0 18 * * *     #  2:00 PM EST → TrendParasite 1
+    - cron: 30 22 * * *    #  6:30 PM EST → TrendParasite 2
   workflow_dispatch:
     inputs:
       bot:
@@ -16,11 +17,12 @@ on:
           - productbot
           - trendparasite1
           - trendparasite2
+
 jobs:
+
   productbot:
-    if: (github.event_name == 'schedule'        && github.event.schedule == '0 13 *
-      * *') || (github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.bot == 'productbot')
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 13 * * *') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.bot == 'productbot')
     runs-on: ubuntu-latest
     name: 🤖 Run ProductBot
     steps:
@@ -29,7 +31,7 @@ jobs:
       - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
       - name: ⚙️ Install dependencies
         run: pip install -r productbot/requirements.txt
       - name: 🚀 Run ProductBot
@@ -42,24 +44,33 @@ jobs:
           --data '{"text":"✅ ProductBot just posted successfully."}' \
           "$SLACK_WEBHOOK_URL"
     env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-      TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+      OPENAI_API_KEY:      ${{ secrets.OPENAI_API_KEY }}
+      TWITTER_API_KEY:     ${{ secrets.TWITTER_API_KEY }}
+      TWITTER_API_SECRET:  ${{ secrets.TWITTER_API_SECRET }}
+      TWITTER_ACCESS_TOKEN:${{ secrets.TWITTER_ACCESS_TOKEN }}
+      TWITTER_ACCESS_SECRET:${{ secrets.TWITTER_ACCESS_SECRET }}
+
   trendparasite1:
-    if: (github.event_name == 'schedule'        && github.event.schedule == '0 18 *
-      * *') || (github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.bot == 'trendparasite1')
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 18 * * *') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.bot == 'trendparasite1')
     runs-on: ubuntu-latest
     name: 🧠 Run TrendParasite (Afternoon)
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+
+      # 📦 ➊ restore (and later update) trend-history cache
+      - name: 📦 Restore trend history
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: reddit-trend-history-${{ github.run_number }}
+          restore-keys: reddit-trend-history-
+
       - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
       - name: ⚙️ Install dependencies
         run: pip install -r trendparasite/requirements.txt
       - name: 🚀 Run TrendParasite 1
@@ -67,36 +78,44 @@ jobs:
       - name: 🔔 Notify Slack
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: >
+        run: |
           curl -X POST -H 'Content-type: application/json' \
-
           --data '{"text":"🧠 TrendParasite (Afternoon) completed successfully."}' \
-
           "$SLACK_WEBHOOK_URL"
     env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-      TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
-      REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
-      REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
-      REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
-      REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
-      REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+      OPENAI_API_KEY:         ${{ secrets.OPENAI_API_KEY }}
+      TWITTER_API_KEY:        ${{ secrets.TWITTER_API_KEY }}
+      TWITTER_API_SECRET:     ${{ secrets.TWITTER_API_SECRET }}
+      TWITTER_ACCESS_TOKEN:   ${{ secrets.TWITTER_ACCESS_TOKEN }}
+      TWITTER_ACCESS_SECRET:  ${{ secrets.TWITTER_ACCESS_SECRET }}
+      REDDIT_CLIENT_ID:       ${{ secrets.REDDIT_CLIENT_ID }}
+      REDDIT_CLIENT_SECRET:   ${{ secrets.REDDIT_CLIENT_SECRET }}
+      REDDIT_USERNAME:        ${{ secrets.REDDIT_USERNAME }}
+      REDDIT_PASSWORD:        ${{ secrets.REDDIT_PASSWORD }}
+      REDDIT_USER_AGENT:      ${{ secrets.REDDIT_USER_AGENT }}
+      TREND_HISTORY_FILE:     .cache/used_trends.json   # ➋ tells script where to save
+
   trendparasite2:
-    if: (github.event_name == 'schedule'        && github.event.schedule == '30 22 *
-      * *') || (github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.bot == 'trendparasite2')
+    if: (github.event_name == 'schedule' && github.event.schedule == '30 22 * * *') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.bot == 'trendparasite2')
     runs-on: ubuntu-latest
     name: 🧠 Run TrendParasite (Evening)
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+
+      # 📦 ➌ restore / update cache (same as above)
+      - name: 📦 Restore trend history
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: reddit-trend-history-${{ github.run_number }}
+          restore-keys: reddit-trend-history-
+
       - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
       - name: ⚙️ Install dependencies
         run: pip install -r trendparasite/requirements.txt
       - name: 🚀 Run TrendParasite 2
@@ -104,20 +123,19 @@ jobs:
       - name: 🔔 Notify Slack
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: >
+        run: |
           curl -X POST -H 'Content-type: application/json' \
-
           --data '{"text":"🧠 TrendParasite (Evening) completed successfully."}' \
-
           "$SLACK_WEBHOOK_URL"
     env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-      TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
-      REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
-      REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
-      REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
-      REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
-      REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+      OPENAI_API_KEY:         ${{ secrets.OPENAI_API_KEY }}
+      TWITTER_API_KEY:        ${{ secrets.TWITTER_API_KEY }}
+      TWITTER_API_SECRET:     ${{ secrets.TWITTER_API_SECRET }}
+      TWITTER_ACCESS_TOKEN:   ${{ secrets.TWITTER_ACCESS_TOKEN }}
+      TWITTER_ACCESS_SECRET:  ${{ secrets.TWITTER_ACCESS_SECRET }}
+      REDDIT_CLIENT_ID:       ${{ secrets.REDDIT_CLIENT_ID }}
+      REDDIT_CLIENT_SECRET:   ${{ secrets.REDDIT_CLIENT_SECRET }}
+      REDDIT_USERNAME:        ${{ secrets.REDDIT_USERNAME }}
+      REDDIT_PASSWORD:        ${{ secrets.REDDIT_PASSWORD }}
+      REDDIT_USER_AGENT:      ${{ secrets.REDDIT_USER_AGENT }}
+      TREND_HISTORY_FILE:     .cache/used_trends.json   # ➍ same pointer

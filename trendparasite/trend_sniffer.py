@@ -8,6 +8,9 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import sys
 import os
+import random, functools, difflib
+from collections import OrderedDict
+from typing import List, Dict
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 from slack_notifier import notify_slack
@@ -41,59 +44,142 @@ def reddit_client():
         user_agent=os.environ["REDDIT_USER_AGENT"]
     )
 
-def fetch_reddit_trends():
+
+# ──── Helpers ───────────────────────────────────────────────────────────────────
+
+_H1 = 60 * 60           # one hour in seconds
+_CACHE = {}             # simple per-run memo cache
+
+
+def _now() -> float:
+    return time.time()
+
+
+def _humans(seconds: float) -> str:
+    """Return hours (1 dp) from seconds, for debugging/logs if desired."""
+    return f"{seconds / _H1:.1f} h"
+
+
+def _normalize_title(text: str) -> str:
+    """Lower-case, strip punctuation/spaces for fuzzy de-dup."""
+    return "".join(ch for ch in text.lower().strip() if ch.isalnum() or ch.isspace())
+
+
+def _similar(t1: str, t2: str, threshold=0.9) -> bool:
+    return difflib.SequenceMatcher(None, t1, t2).ratio() >= threshold
+
+
+# ──── 1. Trend harvesting ───────────────────────────────────────────────────────
+
+def fetch_reddit_trends() -> List[Dict]:
+    """
+    Expanded version — same return shape:
+    [
+        {'title': str, 'subreddit': str, 'score': int,
+         'created_utc': float, 'trend_score': float}
+    ]
+    """
+    if "trends" in _CACHE and _now() - _CACHE["age"] < 60:   # 1-min freshness
+        return _CACHE["trends"]
+
     reddit = reddit_client()
-    now = time.time()
-    max_age = 60 * 60 * 24  # 24 hours
-    trends = []
-    titles_seen = set()
+    now = _now()
+    max_age = 60 * 60 * 24            # 24 h
+    subreddits = ["all", "TrueOffMyChest", "antiwork",
+                  "confession", "AmItheAsshole"]
+    random.shuffle(subreddits)        # distribute API traffic
 
-    subreddits = ["all", "TrueOffMyChest", "antiwork", "confession", "AmItheAsshole"]
+    titles_norm = []
+    trends = OrderedDict()            # keep insertion order
 
-    def extract_from(sub, posts):
-        for post in posts:
-            if post.stickied or post.over_18:
-                continue
-            if now - post.created_utc > max_age:
-                continue
-            title = post.title.strip()
-            if title in titles_seen:
-                continue
-            if len(title) > 15 and not title.lower().startswith(("til", "meirl", "oc", "ama")):
-                trends.append({
-                    "title": title,
-                    "subreddit": post.subreddit.display_name,
-                    "score": post.score,
-                    "created_utc": post.created_utc
-                })
-                titles_seen.add(title)
+    def maybe_add(post):
+        if post.stickied or post.over_18:
+            return
+        age = now - post.created_utc
+        if age > max_age:
+            return
+
+        title = post.title.strip()
+        if len(title) <= 15 or title.lower().startswith(("til", "meirl", "oc", "ama")):
+            return
+
+        norm = _normalize_title(title)
+        if any(_similar(norm, seen) for seen in titles_norm):
+            return
+
+        hours = age / _H1
+        trend_score = post.score / (hours + 1) ** 1.3     # heuristic
+
+        trends[title] = {
+            "title": title,
+            "subreddit": post.subreddit.display_name,
+            "score": post.score,
+            "created_utc": post.created_utc,
+            "trend_score": trend_score
+        }
+        titles_norm.append(norm)
 
     try:
         for sub in subreddits:
-            extract_from(sub, reddit.subreddit(sub).hot(limit=30))
-        return trends
+            for post in reddit.subreddit(sub).hot(limit=30):
+                maybe_add(post)
+            time.sleep(0.4)   # ~2 req/s safeguard
+        # sort by custom score, highest first
+        results = sorted(trends.values(),
+                         key=lambda d: d["trend_score"],
+                         reverse=True)
+        _CACHE["trends"], _CACHE["age"] = results, _now()
+        return results
     except Exception as e:
         print("❌ Reddit API error:", e)
         return []
 
-def fetch_reddit_context(trend):
+
+# ──── 2. Context harvesting ─────────────────────────────────────────────────────
+
+def fetch_reddit_context(trend: str) -> str:
+    """
+    Build up to eight bullet-style context lines
+    (titles, self-text snippets, high-score comments).
+    """
+    cache_key = f"ctx::{trend}"
+    if cache_key in _CACHE:
+        return _CACHE[cache_key]
+
     reddit = reddit_client()
     try:
-        search_results = reddit.subreddit("all").search(trend, sort="relevance", limit=5)
-        context_lines = []
+        search_results = reddit.subreddit("all").search(
+            trend, sort="relevance", limit=5
+        )
+        lines = []
         for post in search_results:
+            # post title
             if len(post.title) > 20:
-                context_lines.append(f"- {post.title.strip()}")
+                flair = f"[{post.link_flair_text}] " if post.link_flair_text else ""
+                lines.append(f"- {flair}{post.title.strip()}")
+
+            # first line of self-text
             if post.selftext:
-                snippet = post.selftext.strip().splitlines()[0]
+                snippet = post.selftext.strip().splitlines()[0][:200]
                 if snippet and len(snippet) > 30:
-                    context_lines.append(f"  {snippet[:200].strip()}")
+                    lines.append(f"  {snippet}")
+
+            # top 3 scoring comments (no URLs)
             post.comments.replace_more(limit=0)
-            for c in post.comments[:3]:
+            top_comments = sorted(
+                post.comments,
+                key=lambda c: getattr(c, "score", 0),
+                reverse=True
+            )[:3]
+            for c in top_comments:
                 body = c.body.strip()
                 if body and len(body) > 30 and "http" not in body.lower():
-                    context_lines.append(f"  {body[:200].strip()}")
-        return "\n".join(context_lines[:8]) or "(No relevant Reddit context found.)"
+                    lines.append(f"  ({c.score}↑) {body[:200]}")
+
+        summary = "\n".join(lines[:8]) or "(No relevant Reddit context found.)"
+        _CACHE[cache_key] = summary
+        return summary
+
     except Exception as e:
         return f"(Failed to fetch Reddit context: {e})"
 
@@ -160,25 +246,25 @@ def score_trends(trends):
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
     prompt = (
-    f"You are a hyper‑reactive, wildly unpredictable Twitter addict who blurts out spicy takes for sport. "
-    f"A current social trend simmers in the background of your mind.\n\n"
-    f"SUBTEXT (never quote directly):\n"
-    f"• Trend/Event: \"{trend_title}\"\n"
-    f"• Reddit Vibe Cues: {context}\n\n"
-    f"Write ONE standalone tweet ≤ 150 characters—chaotic, smug, petty, or dark‑funny—peppered with side‑eye or analogies that clearly *echo* the trend’s energy without naming it outright. "
-    f"No hashtags, links, or emojis in the main tweet.\n\n"
+    f"You’re a volatile Twitter gremlin who gorges on trending chaos and spits out hotter takes. "
+    f"Profanity tolerated, absurdity encouraged, no corporate tone.\n\n"
+    f"Trend/Event (must be **named once**): \"{trend_title}\"\n"
+    f"Reddit Vibe Cues: {context}\n\n"
+    f"Write ONE standalone tweet (≤ 150 chars) that *directly nods* to the trend—roast it, brag about it, or fling a wild analogy. "
+    f"Embrace contradictions, sentence fragments, caps, or side-quests. "
+    f"No emojis or links inside the tweet.\n\n"
     f"Then add:\n"
-    f"• ONE brief reply/CTA ≤ 40 chars (sarcastic, delusional, defensive—your pick).\n"
-    f"• ONE *real, currently trending* hashtag *including the # symbol* (separate field).\n\n"
-    f"Return **only** valid JSON with keys:\n"
+    f"• ONE jagged CTA ≤ 40 chars (taunt, dare, mic-drop—your call).\n"
+    f"• ONE currently-trending hashtag **with** the # sign as its own field.\n\n"
+    f"Return ONLY this JSON ⇩\n"
     f"{{\n"
-    f"  \"tweet\": str,   # ≤150 chars, no emojis, no hashtags\n"
-    f"  \"cta\": str,     # ≤40 chars, no emojis, no hashtags\n"
-    f"  \"hashtag\": str  # starts with #, real & trending\n"
+    f"  \"tweet\": str,\n"
+    f"  \"cta\": str,\n"
+    f"  \"hashtag\": str\n"
     f"}}\n\n"
-    f"Total tweet+cta ≤ 220 chars. "
-    f"If you reference the trend directly, regenerate. "
-    f"Stay viral, unpredictable, and never melancholy."
+    f"Limits: tweet ≤ 150, cta ≤ 40, combined ≤ 220. "
+    f"Tweet must mention the trend once, contain no emojis or extra hashtags. "
+    f"If you censor yourself, regenerate spicier."
 )
 
     try:

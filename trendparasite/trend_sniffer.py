@@ -47,139 +47,97 @@ def reddit_client():
 
 # ──── Helpers ───────────────────────────────────────────────────────────────────
 
-_H1 = 60 * 60           # one hour in seconds
-_CACHE = {}             # simple per-run memo cache
+_H1  = 60 * 60
+_MAX_AGE   = 24 * _H1          # candidate posts ≤ 24 h old
+_MAX_STORE = 200               # remember up to 200 used titles
+_HISTORY   = os.getenv("TREND_HISTORY_FILE", ".cache/used_trends.json")
 
+# ──────────────────────────────────────────────────────────────────────────
+def _load_history() -> set[str]:
+    try:
+        with open(_HISTORY, "r", encoding="utf8") as f:
+            data = json.load(f)
+            return {d["title"] for d in data if time.time() - d["ts"] < _MAX_AGE}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return set()
 
-def _now() -> float:
-    return time.time()
+def _save_history(add_title: str) -> None:
+    os.makedirs(os.path.dirname(_HISTORY), exist_ok=True)
+    try:
+        with open(_HISTORY, "r+", encoding="utf8") as f:
+            data = json.load(f)
+    except Exception:
+        data = []
+    data.append({"title": add_title, "ts": time.time()})
+    data = data[-_MAX_STORE:]                # keep most recent
+    with open(_HISTORY, "w", encoding="utf8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=0)
 
-
-def _humans(seconds: float) -> str:
-    """Return hours (1 dp) from seconds, for debugging/logs if desired."""
-    return f"{seconds / _H1:.1f} h"
-
-
-def _normalize_title(text: str) -> str:
-    """Lower-case, strip punctuation/spaces for fuzzy de-dup."""
-    return "".join(ch for ch in text.lower().strip() if ch.isalnum() or ch.isspace())
-
-
-def _similar(t1: str, t2: str, threshold=0.9) -> bool:
-    return difflib.SequenceMatcher(None, t1, t2).ratio() >= threshold
-
-
-# ──── 1. Trend harvesting ───────────────────────────────────────────────────────
+def _norm(t):  # simple fuzzy-dup helper
+    return "".join(c for c in t.lower() if c.isalnum() or c.isspace())
 
 def fetch_reddit_trends() -> List[Dict]:
-    """
-    Expanded version — same return shape:
-    [
-        {'title': str, 'subreddit': str, 'score': int,
-         'created_utc': float, 'trend_score': float}
-    ]
-    """
-    if "trends" in _CACHE and _now() - _CACHE["age"] < 60:   # 1-min freshness
-        return _CACHE["trends"]
-
     reddit = reddit_client()
-    now = _now()
-    max_age = 60 * 60 * 24            # 24 h
-    subreddits = ["all", "TrueOffMyChest", "antiwork",
-                  "confession", "AmItheAsshole"]
-    random.shuffle(subreddits)        # distribute API traffic
+    now    = time.time()
+    seen   = _load_history()
+    titles_norm, candidates = [], OrderedDict()
 
-    titles_norm = []
-    trends = OrderedDict()            # keep insertion order
+    subs = ["all", "TrueOffMyChest", "antiwork", "confession", "AmItheAsshole"]
+    random.shuffle(subs)
 
     def maybe_add(post):
-        if post.stickied or post.over_18:
-            return
-        age = now - post.created_utc
-        if age > max_age:
-            return
-
+        if post.stickied or post.over_18: return
+        if now - post.created_utc > _MAX_AGE: return
         title = post.title.strip()
-        if len(title) <= 15 or title.lower().startswith(("til", "meirl", "oc", "ama")):
+        if len(title) <= 15 or title.lower().startswith(("til", "meirl", "oc","ama")):
             return
-
-        norm = _normalize_title(title)
-        if any(_similar(norm, seen) for seen in titles_norm):
+        if title in seen: return                          # already tweeted this day
+        n = _norm(title)
+        if any(difflib.SequenceMatcher(None, n, x).ratio() > .9 for x in titles_norm):
             return
-
-        hours = age / _H1
-        trend_score = post.score / (hours + 1) ** 1.3     # heuristic
-
-        trends[title] = {
+        score = post.score / ((now - post.created_utc)/_H1 + 1)**1.3
+        candidates[title] = {
             "title": title,
             "subreddit": post.subreddit.display_name,
             "score": post.score,
             "created_utc": post.created_utc,
-            "trend_score": trend_score
+            "trend_score": score,
         }
-        titles_norm.append(norm)
+        titles_norm.append(n)
 
-    try:
-        for sub in subreddits:
-            for post in reddit.subreddit(sub).hot(limit=30):
-                maybe_add(post)
-            time.sleep(0.4)   # ~2 req/s safeguard
-        # sort by custom score, highest first
-        results = sorted(trends.values(),
-                         key=lambda d: d["trend_score"],
-                         reverse=True)
-        _CACHE["trends"], _CACHE["age"] = results, _now()
-        return results
-    except Exception as e:
-        print("❌ Reddit API error:", e)
-        return []
+    for sub in subs:
+        for p in reddit.subreddit(sub).hot(limit=40):
+            maybe_add(p)
+        time.sleep(0.4)
 
+    picked = sorted(candidates.values(), key=lambda d: d["trend_score"], reverse=True)
+    if not picked:                                            # fallback to anything
+        picked = [{"title": t} for t in seen][-1:]
 
-# ──── 2. Context harvesting ─────────────────────────────────────────────────────
+    choice = random.choice(picked[:10])                       # variety!
+    _save_history(choice["title"])
+    return [choice]                                           # keep existing shape
 
+# ──────────────────────────────────────────────────────────────────────────
 def fetch_reddit_context(trend: str) -> str:
-    """
-    Build up to eight bullet-style context lines
-    (titles, self-text snippets, high-score comments).
-    """
-    cache_key = f"ctx::{trend}"
-    if cache_key in _CACHE:
-        return _CACHE[cache_key]
-
     reddit = reddit_client()
     try:
-        search_results = reddit.subreddit("all").search(
-            trend, sort="relevance", limit=5
-        )
+        rs = reddit.subreddit("all").search(trend, sort="relevance", limit=6)
         lines = []
-        for post in search_results:
-            # post title
-            if len(post.title) > 20:
-                flair = f"[{post.link_flair_text}] " if post.link_flair_text else ""
-                lines.append(f"- {flair}{post.title.strip()}")
-
-            # first line of self-text
-            if post.selftext:
-                snippet = post.selftext.strip().splitlines()[0][:200]
-                if snippet and len(snippet) > 30:
-                    lines.append(f"  {snippet}")
-
-            # top 3 scoring comments (no URLs)
-            post.comments.replace_more(limit=0)
-            top_comments = sorted(
-                post.comments,
-                key=lambda c: getattr(c, "score", 0),
-                reverse=True
-            )[:3]
-            for c in top_comments:
+        for p in rs:
+            flair = f"[{p.link_flair_text}] " if p.link_flair_text else ""
+            if len(p.title) > 20:
+                lines.append(f"- {flair}{p.title.strip()}")
+            if p.selftext:
+                s = p.selftext.strip().splitlines()[0][:200]
+                if len(s) > 30:
+                    lines.append(f"  {s}")
+            p.comments.replace_more(limit=0)
+            for c in sorted(p.comments, key=lambda x: getattr(x,"score",0), reverse=True)[:3]:
                 body = c.body.strip()
-                if body and len(body) > 30 and "http" not in body.lower():
+                if len(body) > 30 and "http" not in body.lower():
                     lines.append(f"  ({c.score}↑) {body[:200]}")
-
-        summary = "\n".join(lines[:8]) or "(No relevant Reddit context found.)"
-        _CACHE[cache_key] = summary
-        return summary
-
+        return "\n".join(lines[:8]) or "(No relevant Reddit context found.)"
     except Exception as e:
         return f"(Failed to fetch Reddit context: {e})"
 

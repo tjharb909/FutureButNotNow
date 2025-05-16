@@ -4,6 +4,10 @@ import openai
 import time
 import tweepy
 import random
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
+
 from slack_notifier import notify_slack
 
 # CONFIG

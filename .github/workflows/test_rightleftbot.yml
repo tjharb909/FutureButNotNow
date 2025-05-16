@@ -32,6 +32,7 @@ jobs:
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         run: |
           echo "🧪 Running rightleftbot with test_mode=${{ github.event.inputs.test_mode }}"
 

@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 Install dependencies
-        run: pip install -r rightleftbot/requirements.txt
+        run: pip install -r RightLeftBot/requirements.txt
 
       - name: 🧪 Run rightleftbot (dry run)
         env:

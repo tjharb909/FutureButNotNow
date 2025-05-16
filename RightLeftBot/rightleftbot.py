@@ -4,17 +4,18 @@ import openai
 import time
 import tweepy
 import random
+from slack_notifier import notify_slack
 
 # CONFIG
-NEWS_API_KEY = "pub_875093f108f1a0e95e3edfc6c2a0817c45bfd"  # Get one at https://newsdata.io
-OPENAI_API_KEY = "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"
+NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TEST_MODE = False  # Set to False when you're ready to post
 
 # Twitter API setup
-TWITTER_API_KEY = "ufqi1H07WBcLYxqEfx6FYn2zy"
-TWITTER_API_SECRET = "KVOzd1rQQ77mnFKaS9Sxj8z2A39dn4DqMgcE3QkKmbPoJTTfqE"
-TWITTER_ACCESS_TOKEN = "1921256236827164673-96qD5k6hKUCFT9Q2ZMuBS2RDcifxfp"
-TWITTER_ACCESS_SECRET = "GwvNge3OqNFxzsYlVPHMOZVN1qHZTKz392gJBSc2nI6Nn"
+TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
+TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
+TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
 
 # === SETUP ===
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
@@ -74,12 +75,14 @@ def post_to_twitter(text):
         print("✅ Tweet posted.")
     except Exception as e:
         print("❌ Error posting tweet:", e)
+        notify_slack("Right/Left Bot", "fail", f"Error:\n{str(outer)}")
 
 def run_bot():
     print("📰 Fetching news...")
     articles = fetch_news()
     if not articles:
         print("⚠️ No articles found.")
+        notify_slack("Right/Left Bot", "fail", "OpenAI generation failed.")
         return
 
     article = articles[0]
@@ -90,6 +93,7 @@ def run_bot():
     if not TEST_MODE:
         twitter_client.create_tweet(text=tweet)
         print("✅ Tweet posted.")
+        notify_slack("Right/Left Bot", "success", f"Posted:\n{tweet}")
 
 # === RUN ===
 if __name__ == "__main__":

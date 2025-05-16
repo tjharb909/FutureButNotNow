@@ -1,5 +1,2 @@
 openai
 tweepy
-time
-random
-os

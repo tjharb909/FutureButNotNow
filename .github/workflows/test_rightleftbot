@@ -1,1 +1,43 @@
+name: 🧪 Manual Test — Right/Left Bot
 
+on:
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Enable dry-run mode (skip Twitter post)?"
+        required: true
+        default: "true"
+
+jobs:
+  test-trendparasite:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧾 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: pip install -r rightleftbot/requirements.txt
+
+      - name: 🧪 Run rightleftbot (dry run)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "🧪 Running rightleftbot with test_mode=${{ github.event.inputs.test_mode }}"
+
+          if [[ "${{ github.event.inputs.test_mode }}" == "true" ]]; then
+            echo "⚠️ Disabling actual Twitter post..."
+            sed -i 's/client.create_tweet/# client.create_tweet/' RightLeftBot/rightleftbot.py
+          fi
+
+          python RightLeftBot/rightleftbot.py

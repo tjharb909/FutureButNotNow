@@ -5,21 +5,23 @@ on:
   schedule:
     - cron: 0 13 * * *     #  9:00 AM EST → ProductBot
     - cron: 0 18 * * *     #  2:00 PM EST → TrendParasite 1
+    - cron: 0 20 * * *     #  4:00 PM EST → Right/Left Bot 1
     - cron: 30 22 * * *    #  6:30 PM EST → TrendParasite 2
+    - cron: 0 23 * * *     #  4:00 PM EST → Right/Left Bot 1 
+    
   workflow_dispatch:
     inputs:
       bot:
         description: Choose the bot to run manually
         required: true
-        default: productbot
+        default: trendparasite1
         type: choice
         options:
           - productbot
           - trendparasite1
-          - trendparasite2
+          - rightleftbot
 
 jobs:
-
   productbot:
     if: (github.event_name == 'schedule' && github.event.schedule == '0 13 * * *') ||
         (github.event_name == 'workflow_dispatch' && github.event.inputs.bot == 'productbot')
@@ -139,3 +141,69 @@ jobs:
       REDDIT_PASSWORD:        ${{ secrets.REDDIT_PASSWORD }}
       REDDIT_USER_AGENT:      ${{ secrets.REDDIT_USER_AGENT }}
       TREND_HISTORY_FILE:     .cache/used_trends.json   # ➍ same pointer
+
+  rightleftbot1:
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 20 * * *') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.bot == 'rightleftbot')
+    runs-on: ubuntu-latest
+    name: 🤖 Run Right/Left Bot
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: ⚙️ Install dependencies
+        run: pip install -r productbot/requirements.txt
+      - name: 🚀 Run ProductBot
+        run: python RightLeftBot/rightleftbot.py
+      - name: 🔔 Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"✅ Right/Left Bot just posted successfully."}' \
+          "$SLACK_WEBHOOK_URL"
+    env:
+      OPENAI_API_KEY:      ${{ secrets.OPENAI_API_KEY }}
+      TWITTER_API_KEY:     ${{ secrets.TWITTER_API_KEY }}
+      TWITTER_API_SECRET:  ${{ secrets.TWITTER_API_SECRET }}
+      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+      NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+
+  rightleftbot2:
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.bot == 'rightleftbot')
+    runs-on: ubuntu-latest
+    name: 🤖 Run Right/Left Bot 2
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: ⚙️ Install dependencies
+        run: pip install -r productbot/requirements.txt
+      - name: 🚀 Run ProductBot
+        run: python RightLeftBot/rightleftbot.py
+      - name: 🔔 Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"✅ Right/Left Bot just posted successfully."}' \
+          "$SLACK_WEBHOOK_URL"
+    env:
+      OPENAI_API_KEY:      ${{ secrets.OPENAI_API_KEY }}
+      TWITTER_API_KEY:     ${{ secrets.TWITTER_API_KEY }}
+      TWITTER_API_SECRET:  ${{ secrets.TWITTER_API_SECRET }}
+      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+      NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+
+
+
+      

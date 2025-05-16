@@ -19,7 +19,7 @@ on:
         options:
           - productbot
           - trendparasite1
-          - rightleftbot
+          - rightleftbot1
 
 jobs:
   productbot:

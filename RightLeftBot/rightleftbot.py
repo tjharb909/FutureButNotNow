@@ -49,8 +49,10 @@ Summary: {description}
 Details: {context}
 
 Write a bold tweet with only one applicable and trending hashtag, NO links, NO emojis. Prefix the tweet with:
-🟦 [Left] — if tone is left
-🟥 [Right] — if tone is right
+🟦 [Leftist View] — if tone is left
+🟥 [Rightist View] — if tone is right
+
+And include a header with a brief on the news discussed. 
 
 Avoid politeness. Be blunt and viral.
 """

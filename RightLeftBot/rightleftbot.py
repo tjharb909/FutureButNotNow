@@ -42,13 +42,13 @@ def fetch_news():
 def build_prompt(title, description, context, tone):
     label = "left-leaning progressive" if tone == "left" else "right-leaning conservative"
     return f"""
-You are a viral and contrversial Twitter bot. You post a single controversial tweet reacting to real news. The tweet must sound like a {label} and fit in a single post (≤280 characters).
+You are a viral and contrversial Twitter bot. You post a single short viral and controversial tweet reacting to real news. The tweet must sound like a {label} and fit in a single post (≤250 characters).
 
 News Title: {title}
 Summary: {description}
 Details: {context}
 
-Write a bold tweet with no hashtags, links, or emojis. Prefix the tweet with:
+Write a bold tweet with only one applicable and trending hashtag, NO links, NO emojis. Prefix the tweet with:
 🟦 [Left] — if tone is left
 🟥 [Right] — if tone is right
 

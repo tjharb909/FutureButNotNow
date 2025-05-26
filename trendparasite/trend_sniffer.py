@@ -8,6 +8,10 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import sys
 import os
+import re
+from textblob import TextBlob
+from collections import Counter
+import requests
 import random, functools, difflib
 from collections import OrderedDict
 from typing import List, Dict
@@ -120,26 +124,145 @@ def fetch_reddit_trends() -> List[Dict]:
 
 # ──────────────────────────────────────────────────────────────────────────
 def fetch_reddit_context(trend: str) -> str:
+    """Fetch and analyze Reddit context with relevance scoring"""
     reddit = reddit_client()
+    
     try:
-        rs = reddit.subreddit("all").search(trend, sort="relevance", limit=6)
-        lines = []
-        for p in rs:
-            flair = f"[{p.link_flair_text}] " if p.link_flair_text else ""
-            if len(p.title) > 20:
-                lines.append(f"- {flair}{p.title.strip()}")
-            if p.selftext:
-                s = p.selftext.strip().splitlines()[0][:200]
-                if len(s) > 30:
-                    lines.append(f"  {s}")
-            p.comments.replace_more(limit=0)
-            for c in sorted(p.comments, key=lambda x: getattr(x,"score",0), reverse=True)[:3]:
-                body = c.body.strip()
-                if len(body) > 30 and "http" not in body.lower():
-                    lines.append(f"  ({c.score}↑) {body[:200]}")
-        return "\n".join(lines[:8]) or "(No relevant Reddit context found.)"
+        posts = list(reddit.subreddit("all").search(trend, sort="relevance", limit=15))
+        if not posts:
+            return "No relevant Reddit context found."
+        
+        # Score posts by relevance
+        scored_posts = []
+        for post in posts:
+            relevance = calculate_relevance(post.title, trend)
+            if relevance > 0.3:  # Filter low relevance
+                scored_posts.append((post, relevance))
+        
+        scored_posts.sort(key=lambda x: x[1], reverse=True)
+        top_posts = [post for post, _ in scored_posts[:5]]
+        
+        # Build enhanced context
+        context_parts = [
+            f"SUMMARY: {summarize_posts(top_posts)}",
+            f"SENTIMENT: {analyze_sentiment(top_posts)}",
+            f"KEYWORDS: {', '.join(extract_keywords(top_posts))}",
+            f"ENGAGEMENT: {get_engagement_signals(top_posts)}"
+        ]
+        
+        return "\n".join(context_parts)
+        
     except Exception as e:
-        return f"(Failed to fetch Reddit context: {e})"
+        return f"Context fetch failed: {e}"
+
+def calculate_relevance(post_title: str, trend: str) -> float:
+    """Calculate relevance score between post and trend"""
+    trend_words = set(trend.lower().split())
+    post_words = set(post_title.lower().split())
+    
+    # Jaccard similarity + title overlap bonus
+    intersection = len(trend_words.intersection(post_words))
+    union = len(trend_words.union(post_words))
+    jaccard = intersection / union if union > 0 else 0
+    
+    # Bonus for exact phrase matches
+    if trend.lower() in post_title.lower():
+        jaccard += 0.3
+    
+    return min(jaccard, 1.0)
+
+def summarize_posts(posts) -> str:
+    """Create concise summary of top posts"""
+    if not posts:
+        return "No relevant posts found."
+    
+    summaries = []
+    for post in posts[:3]:
+        # Extract key info
+        title = post.title[:100]
+        score = post.score
+        comments = post.num_comments
+        
+        # Get top comment if available
+        top_comment = ""
+        try:
+            post.comments.replace_more(limit=0)
+            if post.comments:
+                top_comment = post.comments[0].body[:150]
+        except:
+            pass
+        
+        summary = f"• {title} ({score}↑, {comments} comments)"
+        if top_comment and len(top_comment) > 20:
+            summary += f"\n  Top comment: {top_comment}..."
+        
+        summaries.append(summary)
+    
+    return "\n".join(summaries)
+
+def analyze_sentiment(posts) -> str:
+    """Analyze overall sentiment of discussions"""
+    all_text = []
+    
+    for post in posts:
+        all_text.append(post.title)
+        if hasattr(post, 'selftext') and post.selftext:
+            all_text.append(post.selftext[:500])
+        
+        # Sample comments
+        try:
+            post.comments.replace_more(limit=0)
+            for comment in post.comments[:5]:
+                if hasattr(comment, 'body'):
+                    all_text.append(comment.body[:200])
+        except:
+            pass
+    
+    combined_text = " ".join(all_text)
+    blob = TextBlob(combined_text)
+    
+    polarity = blob.sentiment.polarity
+    if polarity > 0.1:
+        return "positive"
+    elif polarity < -0.1:
+        return "negative"
+    else:
+        return "neutral"
+
+def extract_keywords(posts) -> list:
+    """Extract trending keywords from discussions"""
+    all_words = []
+    
+    for post in posts:
+        words = re.findall(r'\b[a-zA-Z]{3,}\b', post.title.lower())
+        all_words.extend(words)
+    
+    # Filter common words and get top keywords
+    common_words = {'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'this', 'that', 'with', 'have', 'was', 'will', 'they', 'been', 'said', 'what', 'when', 'how', 'why', 'who', 'where'}
+    filtered_words = [w for w in all_words if w not in common_words and len(w) > 3]
+    
+    return [word for word, count in Counter(filtered_words).most_common(5)]
+
+def get_engagement_signals(posts) -> dict:
+    """Analyze engagement patterns"""
+    if not posts:
+        return {"avg_score": 0, "avg_comments": 0, "controversy": "low"}
+    
+    scores = [p.score for p in posts]
+    comments = [p.num_comments for p in posts]
+    
+    avg_score = sum(scores) / len(scores)
+    avg_comments = sum(comments) / len(comments)
+    
+    # Controversy indicator (high comments relative to upvotes)
+    controversy_ratio = avg_comments / max(avg_score, 1)
+    controversy = "high" if controversy_ratio > 0.5 else "medium" if controversy_ratio > 0.2 else "low"
+    
+    return {
+        "avg_score": int(avg_score),
+        "avg_comments": int(avg_comments),
+        "controversy": controversy
+    }
 
 # ─────────────────────────────────────
 # Memory (24-Hour Reset)
@@ -203,41 +326,49 @@ def score_trends(trends):
 # ─────────────────────────────────────
 def generate_tweet(trend_title):
     context = fetch_reddit_context(trend_title)
-    prompt = (
-    f"You’re a volatile Twitter gremlin who gorges on trending chaos and spits out hotter takes. "
-    f"Profanity tolerated, absurdity encouraged, no corporate tone.\n\n"
-    f"Trend/Event (must be **named once**): \"{trend_title}\"\n"
-    f"Reddit Vibe Cues: {context}\n\n"
-    f"Write ONE standalone tweet (≤ 150 chars) that *directly nods* to the trend—roast it, brag about it, or fling a wild analogy. "
-    f"Embrace contradictions, sentence fragments, caps, or side-quests. "
-    f"No emojis or links inside the tweet.\n\n"
-    f"Then add:\n"
-    f"• ONE jagged CTA ≤ 40 chars (taunt, dare, mic-drop—your call).\n"
-    f"• ONE currently-trending hashtag **with** the # sign as its own field.\n\n"
-    f"Return ONLY this JSON ⇩\n"
-    f"{{\n"
-    f"  \"tweet\": str,\n"
-    f"  \"cta\": str,\n"
-    f"  \"hashtag\": str\n"
-    f"}}\n\n"
-    f"Limits: tweet ≤ 150, cta ≤ 40, combined ≤ 220. "
-    f"Tweet must mention the trend once, contain no emojis or extra hashtags. "
-    f"If you censor yourself, regenerate spicier."
-)
+    
+    prompt = f"""Create viral Twitter content for this trending topic.
+
+Topic: "{trend_title}"
+Context: {context[:600]}
+
+Requirements:
+- 200-250 characters total
+- Natural trend reference (not forced exact wording)
+- Genuine insight, hot take, or relatable angle
+- Match discussion sentiment and energy
+
+Good examples:
+- "Everyone's arguing about X but the real issue is Y affecting millions daily"
+- "X trending while I'm still confused about last week's Y drama"
+- "Plot twist: X isn't about Y, it's actually Z and here's why..."
+
+Bad examples:
+- "X is trending, thoughts?" (too generic)
+- "Can't believe X happened!" (pure reaction)
+
+Return JSON only:
+{{
+  "tweet": "main content with trend reference",
+  "cta": "call-to-action under 25 chars", 
+  "hashtag": "#TrendingTag"
+}}
+
+Limits: tweet ≤200, cta ≤25, total ≤250. Be substantive, not reactive."""
 
     try:
         res = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
-            temperature=1.4,
-            top_p=0.95,
+            temperature=0.8,
+            top_p=0.9,
             frequency_penalty=0.3,
-            presence_penalty=0.6,
+            presence_penalty=0.2,
             max_tokens=250
         )
         return res.choices[0].message.content.strip(), context
     except Exception as e:
-        return f"ERROR: {e}", None
+        return f"ERROR: {e}", context
 
 # ─────────────────────────────────────
 # Twitter Posting

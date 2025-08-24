@@ -41,10 +41,10 @@ jobs:
         run: |
           pwd
           echo "Workspace: $GITHUB_WORKSPACE"
-          echo "Top-level files:"
+          echo "Top-level:"
           ls -la
-          echo "Python files (depth ≤ 4):"
-          find . -maxdepth 4 -type f -name "*.py" | sed -e 's|^\./||' | sort
+          echo "Python files (≤ depth 5):"
+          find . -maxdepth 5 -type f -name "*.py" -print0 | xargs -0 -I{} echo "{}" | sed 's|^\./||' | sort
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -63,41 +63,74 @@ jobs:
         run: |
           set -euo pipefail
           INPUT="${{ github.event.inputs.script_path }}"
-          if [[ -z "${INPUT:-}" || "${INPUT}" == "auto" ]]; then
-            candidates=(
-              "bots/product_bot_v2.py"
-              "bots/product_bot.py"
-              "product_bot_v2.py"
-              "product_bot.py"
-              "scripts/product_bot_v2.py"
-              "src/bots/product_bot_v2.py"
-              "src/product_bot_v2.py"
-            )
-            for c in "${candidates[@]}"; do
-              if [[ -f "$c" ]]; then
-                echo "BOT_SCRIPT=$c" >> "$GITHUB_ENV"
-                break
+
+          pick_first_match () {
+            # print first argument that exists as a file
+            for p in "$@"; do
+              if [[ -f "$p" ]]; then
+                echo "$p"
+                return 0
               fi
             done
-            if [[ -z "${BOT_SCRIPT:-}" ]]; then
-              found="$(find . -maxdepth 4 -type f \( -name "product_bot*_v2.py" -o -name "product_bot.py" \) | head -n 1)"
-              if [[ -n "$found" ]]; then
-                echo "BOT_SCRIPT=${found#./}" >> "$GITHUB_ENV"
-              fi
-            fi
+            return 1
+          }
+
+          if [[ "${INPUT}" != "auto" ]]; then
+            [[ -f "$INPUT" ]] || { echo "::error file=$INPUT::Given script path not found"; exit 1; }
+            echo "BOT_SCRIPT=$INPUT" >> "$GITHUB_ENV"
           else
-            if [[ -f "$INPUT" ]]; then
-              echo "BOT_SCRIPT=$INPUT" >> "$GITHUB_ENV"
+            # Candidates (broad patterns; handle spaces)
+            mapfile -t CANDS < <(git ls-files '*.py' | grep -Ei \
+              -e '(^|/)product[ _-]?bot.*\.py$' \
+              -e '(^|/)rightleftbot\.py$' \
+              -e '(^|/)future.*bot.*\.py$' \
+              -e '(^|/)bot.*product.*\.py$' \
+              || true)
+
+            if [[ ${#CANDS[@]} -eq 0 ]]; then
+              # Fallback: find
+              mapfile -t CANDS < <(find . -maxdepth 6 -type f -name "*.py" -print | sed 's|^\./||' | sort)
+            fi
+
+            if [[ ${#CANDS[@]} -gt 0 ]]; then
+              # Prefer “Product Bot V2/…”; else any *product*bot*; else first
+              PREF=$(printf '%s\n' "${CANDS[@]}" | grep -E '^Product Bot V2/.*\.py$' | head -n1 || true)
+              if [[ -n "${PREF:-}" ]]; then
+                echo "BOT_SCRIPT=$PREF" >> "$GITHUB_ENV"
+              else
+                PREF=$(printf '%s\n' "${CANDS[@]}" | grep -Ei 'product[ _-]?bot.*\.py$' | head -n1 || true)
+                if [[ -n "${PREF:-}" ]]; then
+                  echo "BOT_SCRIPT=$PREF" >> "$GITHUB_ENV"
+                else
+                  echo "BOT_SCRIPT=${CANDS[0]}" >> "$GITHUB_ENV"
+                fi
+              fi
             else
-              echo "::error file=$INPUT::Given script path not found"
+              echo "::error::Could not locate any .py scripts."
               exit 1
             fi
           fi
+
           echo "Using BOT_SCRIPT=${BOT_SCRIPT:-<none>}"
-          if [[ -z "${BOT_SCRIPT:-}" ]]; then
-            echo "::error::Could not locate the bot script. Check the 'Repo snapshot' step and re-run with the correct script_path."
-            exit 1
+          [[ -n "${BOT_SCRIPT:-}" ]] || { echo "::error::BOT_SCRIPT not set"; exit 1; }
+
+      - name: Locate products.csv (optional)
+        id: prodcsv
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Try to find a products.csv near the script or anywhere in repo
+          base="$(dirname "$BOT_SCRIPT")"
+          try1="$base/products.csv"
+          if [[ -f "$try1" ]]; then
+            echo "PRODUCT_CSV=$try1" >> "$GITHUB_ENV"
+          else
+            found="$(git ls-files | grep -E '/?products\.csv$' | head -n1 || true)"
+            if [[ -n "$found" && -f "$found" ]]; then
+              echo "PRODUCT_CSV=$found" >> "$GITHUB_ENV"
+            fi
           fi
+          echo "PRODUCT_CSV=${PRODUCT_CSV:-<auto not found>}"
 
       - name: Run ProductBot (LIVE)
         env:
@@ -113,10 +146,15 @@ jobs:
           AFFILIATE_TAG: futurebutnotn-20
           TRACKING_IDS_BY_MODE: '{"spiky":"futurebutnotn-20","confession":"futurebutnotn-21","problem_fix":"futurebutnotn-22","brand_tax":"futurebutnotn-23","micro_drill":"futurebutnotn-24","two_choice":"futurebutnotn-25"}'
           DRY_RUN: ${{ github.event.inputs.dry_run }}
-          # If your script loads utils/ or expects repo root imports:
+
+          # Make local imports (utils/) work
           PYTHONPATH: ${{ github.workspace }}
+
+          # Export located CSV if found
+          PRODUCT_CSV: ${{ env.PRODUCT_CSV }}
         run: |
           set -euo pipefail
+          echo "Running: $BOT_SCRIPT"
           python "$BOT_SCRIPT"
 
       - name: Upload artifacts (logs/state)

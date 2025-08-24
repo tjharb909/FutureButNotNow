@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       script_path:
-        description: "Path to the Python script to run"
+        description: "Path to your bot script (or 'auto' to detect)"
         required: true
-        default: "bots/product_bot_v2.py"
+        default: "auto"
         type: string
       openai_model:
-        description: "OpenAI model (optional)"
+        description: "OpenAI model"
         required: false
         default: "gpt-4o-mini"
         type: string
@@ -37,6 +37,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Repo snapshot (debug)
+        run: |
+          pwd
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "Top-level files:"
+          ls -la
+          echo "Python files (depth ≤ 4):"
+          find . -maxdepth 4 -type f -name "*.py" | sed -e 's|^\./||' | sort
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -44,33 +53,81 @@ jobs:
 
       - name: Install deps
         run: |
+          python -V
           pip install --upgrade pip
           pip install tweepy openai
 
+      - name: Resolve script path
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT="${{ github.event.inputs.script_path }}"
+          if [[ -z "${INPUT:-}" || "${INPUT}" == "auto" ]]; then
+            candidates=(
+              "bots/product_bot_v2.py"
+              "bots/product_bot.py"
+              "product_bot_v2.py"
+              "product_bot.py"
+              "scripts/product_bot_v2.py"
+              "src/bots/product_bot_v2.py"
+              "src/product_bot_v2.py"
+            )
+            for c in "${candidates[@]}"; do
+              if [[ -f "$c" ]]; then
+                echo "BOT_SCRIPT=$c" >> "$GITHUB_ENV"
+                break
+              fi
+            done
+            if [[ -z "${BOT_SCRIPT:-}" ]]; then
+              found="$(find . -maxdepth 4 -type f \( -name "product_bot*_v2.py" -o -name "product_bot.py" \) | head -n 1)"
+              if [[ -n "$found" ]]; then
+                echo "BOT_SCRIPT=${found#./}" >> "$GITHUB_ENV"
+              fi
+            fi
+          else
+            if [[ -f "$INPUT" ]]; then
+              echo "BOT_SCRIPT=$INPUT" >> "$GITHUB_ENV"
+            else
+              echo "::error file=$INPUT::Given script path not found"
+              exit 1
+            fi
+          fi
+          echo "Using BOT_SCRIPT=${BOT_SCRIPT:-<none>}"
+          if [[ -z "${BOT_SCRIPT:-}" ]]; then
+            echo "::error::Could not locate the bot script. Check the 'Repo snapshot' step and re-run with the correct script_path."
+            exit 1
+          fi
+
       - name: Run ProductBot (LIVE)
         env:
-          # --- Required Secrets ---
+          # Required secrets
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
 
-          # --- Optional knobs ---
+          # Optional knobs
           OPENAI_MODEL: ${{ github.event.inputs.openai_model }}
           AFFILIATE_TAG: futurebutnotn-20
           TRACKING_IDS_BY_MODE: '{"spiky":"futurebutnotn-20","confession":"futurebutnotn-21","problem_fix":"futurebutnotn-22","brand_tax":"futurebutnotn-23","micro_drill":"futurebutnotn-24","two_choice":"futurebutnotn-25"}'
           DRY_RUN: ${{ github.event.inputs.dry_run }}
+          # If your script loads utils/ or expects repo root imports:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          python "${{ github.event.inputs.script_path }}"
+          python "$BOT_SCRIPT"
 
-      - name: Upload logs (tweet logs, metrics, bandit state)
+      - name: Upload artifacts (logs/state)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: productbot-debug-${{ github.run_id }}
+          name: productbot-artifacts-${{ github.run_id }}
           path: |
-            bots/logs/**
-            bots/state/**
+            **/logs/**
+            **/state/**
+            **/tweet_logs.csv
+            **/metrics.csv
+            **/bandit.json
           if-no-files-found: ignore
